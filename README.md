@@ -25,18 +25,57 @@ A real-time platform that monitors social media trends, correlates them with mai
 git clone <repository-url>
 cd veracity
 
-# Start development environment
-docker-compose up -d
+# Setup environment configuration
+cp .env.example .env
+# Edit .env with your API keys (Twitter, Reddit, etc.)
+
+# Start infrastructure services (PostgreSQL, MongoDB, Redis, Elasticsearch, Kafka)
+podman-compose up -d
 
 # Backend setup
 cd backend
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+python -m spacy download en_core_web_sm
+
+# Start backend development server
 python -m app.main
 
-# Frontend setup
+# Frontend setup (in a new terminal)
 cd frontend
 npm install
 npm run dev
+```
+
+The application will be available at:
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
+
+## Infrastructure Services
+
+Infrastructure services run in containers and are accessible at:
+- **PostgreSQL**: localhost:5432
+- **MongoDB**: localhost:27017  
+- **Redis**: localhost:6379
+- **Elasticsearch**: localhost:9200
+- **Kafka**: localhost:9092
+
+### Container Management
+
+```bash
+# Start all infrastructure services
+podman-compose up -d
+
+# Stop all services
+podman-compose down
+
+# View logs
+podman-compose logs <service-name>
+
+# Check service status
+podman ps
 ```
 
 ## Project Structure

@@ -16,31 +16,42 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Environment Setup
 
-### Using Nix (Recommended)
+### Standard Setup
 ```bash
-# Enter development shell with all dependencies
-nix develop
+# Setup environment configuration
+cp .env.example .env
+# Edit .env file with your API keys (Twitter, Reddit, News APIs)
 
-# Quick start after entering nix shell
-cp .env.example .env  # Configure API keys
-dc up -d              # Start all services
-be-dev                # Start backend (alias)
-fe-dev                # Start frontend (alias)
-```
+# Start infrastructure services (all containers use host networking)
+podman-compose up -d
 
-### Manual Setup
-```bash
-# Backend dependencies
+# Setup Python virtual environment for backend
 cd backend
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 
-# Frontend dependencies  
-cd frontend
+# Setup frontend dependencies  
+cd ../frontend
 npm install
 
-# Start infrastructure
-podman-compose up -d postgres mongodb redis elasticsearch kafka
+# Start development servers (in separate terminals)
+# Terminal 1: Backend
+cd backend && source .venv/bin/activate
+python -m app.main
+
+# Terminal 2: Frontend  
+cd frontend
+npm run dev
+```
+
+### Using Nix (Alternative)
+```bash
+# Enter development shell (provides system tools only)
+nix develop
+
+# Follow the standard setup steps above
 ```
 
 ## Architecture Overview
@@ -79,37 +90,65 @@ frontend/
 
 ## Common Development Commands
 
-### Container Management (Podman)
+### Infrastructure Management (Podman)
 ```bash
-dc up -d                    # Start all services
-dc down                     # Stop all services  
-dc logs -f <service>        # View logs
-dc restart <service>        # Restart service
-reset-dev                   # Reset all data and restart
+podman-compose up -d                    # Start all infrastructure services
+podman-compose down                     # Stop all services  
+podman-compose logs -f <service>        # View logs
+podman-compose restart <service>        # Restart service
+podman ps                              # Check container status
 ```
+
+### Service URLs
+When infrastructure is running, services are available at:
+- **PostgreSQL**: localhost:5432 (user: veracity_user, db: veracity)
+- **MongoDB**: localhost:27017 (user: veracity_user, db: veracity)  
+- **Redis**: localhost:6379
+- **Elasticsearch**: localhost:9200
+- **Kafka**: localhost:9092
 
 ### Backend Development
 ```bash
-be-dev                      # Start development server
-be-test                     # Run tests
-be-lint                     # Format and lint code
-python -m app.main          # Direct server start
-pytest backend/tests/       # Run specific tests
+# Activate virtual environment first
+cd backend && source .venv/bin/activate
+
+# Start development server (with auto-reload)
+python -m app.main
+# Or alternatively: uvicorn app.main:app --reload
+
+# Run tests
+pytest tests/
+
+# Code formatting and linting
+black .
+isort .
+flake8 .
 ```
 
 ### Frontend Development  
 ```bash
-fe-dev                      # Start development server
-fe-build                    # Production build
-fe-lint                     # Lint TypeScript/React
+cd frontend
+
+npm run dev                 # Start development server
+npm run build               # Production build
+npm run lint                # Lint TypeScript/React
 npm run type-check          # TypeScript validation
 ```
 
 ### Database Operations
 ```bash
-psql-local                  # Connect to PostgreSQL
-mongo-local                 # Connect to MongoDB
-redis-cli-local             # Connect to Redis
+# PostgreSQL (password: veracity_password)
+export PGPASSWORD=veracity_password
+psql -h localhost -U veracity_user -d veracity
+
+# MongoDB
+podman exec -it veracity-mongodb mongosh -u veracity_user -p veracity_password
+
+# Redis
+redis-cli -h localhost -p 6379
+
+# Elasticsearch
+curl http://localhost:9200/_cluster/health
 ```
 
 ## Key Implementation Patterns
@@ -223,6 +262,152 @@ Production requires these environment variables:
 ### Commit Messages and Attribution
 **CRITICAL**: Never reference Claude, AI assistance, or add AI co-authorship in commit messages. All commits should appear as normal human development work without any mention of AI assistance. This is a strict requirement that must always be followed.
 
+### GitHub Issue Management
+
+#### Issue Labels
+The repository uses a comprehensive labeling system for organization:
+
+**Component Labels:**
+- `backend` - Backend/API related work
+- `frontend` - Frontend/UI related work  
+- `ml-nlp` - Machine Learning and NLP components
+- `data-ingestion` - Social media data collection
+- `real-time` - WebSocket and real-time features
+- `infrastructure` - DevOps and deployment
+- `database` - Database operations
+- `api` - API endpoints and documentation
+
+**Feature Type Labels:**
+- `core-feature` - Essential platform functionality
+- `security` - Security and privacy features
+- `performance` - Performance optimization
+- `testing` - Testing infrastructure
+
+**Priority Labels:**
+- `priority-high` - Implement first
+- `priority-medium` - Implement after high priority
+- `priority-low` - Nice to have features
+
+#### Working with Issues
+```bash
+# List issues by priority
+gh issue list --label priority-high
+gh issue list --label priority-medium
+
+# List issues by component
+gh issue list --label backend
+gh issue list --label frontend
+
+# Create new issue with labels
+gh issue create --title "Issue Title" --body "Description" --label "backend,core-feature,priority-medium"
+
+# Edit existing issue
+gh issue edit 5 --add-label "performance"
+gh issue edit 5 --remove-label "priority-low"
+
+# Close issue when work is complete
+gh issue close 5 --comment "Completed in PR #12"
+```
+
+#### Development Workflow
+1. Pick high-priority issues first (`priority-high` label)
+2. Assign yourself to the issue: `gh issue edit <number> --add-assignee @me`
+3. Create feature branch: `git checkout -b feature/issue-<number>-description`
+4. Implement the feature following the patterns in existing code
+5. Create PR linking to issue: `gh pr create --title "Fix #<number>: Description"`
+6. Ensure all tests pass and code follows project conventions
+7. Request review and merge when approved
+8. Close issue automatically via PR merge or manually with `gh issue close`
+
+### Development Methodology
+
+#### Pragmatic Hybrid Approach
+We use different development approaches based on the type of work:
+
+**Infrastructure & Setup (Implementation-First):**
+- Database schemas and migrations
+- Container configuration and deployment
+- Basic API endpoints and routing
+- Initial service integrations
+- Focus: Get it working quickly, add tests for integration points
+
+**Algorithms & Core Logic (Test-Driven Development):**
+- Trust scoring algorithms
+- NLP processing pipelines
+- Trend detection algorithms
+- Bot detection systems
+- Focus: Write tests first to clarify requirements and catch edge cases
+
+**API Endpoints (Contract-First):**
+- Define API interface and schemas first
+- Implement endpoints with proper error handling
+- Test happy path and error cases
+- Leverage FastAPI's automatic validation
+
+**Frontend Components (Component-Driven):**
+- Build components in isolation
+- Visual and interaction testing
+- Responsive design validation
+- Accessibility compliance testing
+
+#### Testing Strategy by Component Type
+
+**Infrastructure Testing:**
+```bash
+# Integration tests for database connections
+# End-to-end tests for data flow
+# Performance tests under load
+# Docker container health checks
+```
+
+**Algorithm Testing:**
+```python
+# Unit tests with known input/output pairs
+# Property-based testing for edge cases
+# Performance benchmarks
+# A/B testing frameworks for algorithm tuning
+```
+
+**API Testing:**
+```python
+# FastAPI test client for endpoint testing
+# Authentication and authorization tests
+# Rate limiting validation
+# Error response verification
+```
+
+**Frontend Testing:**
+```javascript
+# Component unit tests with React Testing Library
+# E2E tests with Playwright
+# Visual regression testing
+# Accessibility audits
+```
+
+#### Code Quality Standards
+
+**Backend (Python):**
+- Black for code formatting
+- isort for import sorting
+- flake8 for linting
+- mypy for type checking
+- 80%+ test coverage for core algorithms
+- Async/await patterns throughout
+
+**Frontend (TypeScript):**
+- Prettier for code formatting
+- ESLint for linting
+- TypeScript strict mode
+- Component prop validation
+- Responsive design requirements
+
+#### Performance Requirements
+- API endpoints: < 200ms response time
+- Database queries: < 100ms for simple operations
+- ML processing: < 500ms for real-time operations
+- WebSocket message delivery: < 100ms latency
+- Frontend initial load: < 2 seconds
+
 ## Performance Guidelines
 
 - Async/await throughout for non-blocking I/O
@@ -231,3 +416,55 @@ Production requires these environment variables:
 - Batch processing for ML operations
 - WebSocket for real-time updates instead of polling
 - Horizontal scaling ready with stateless services
+
+## Troubleshooting
+
+### Container Issues
+```bash
+# Check if all services are running
+podman ps
+
+# Check service logs
+podman-compose logs <service-name>
+
+# Restart a specific service
+podman-compose restart <service-name>
+
+# Reset all infrastructure (WARNING: deletes all data)
+podman-compose down
+podman volume prune -f
+podman-compose up -d
+```
+
+### Network Issues
+All services use host networking to avoid iptables conflicts. If you have port conflicts:
+- PostgreSQL: 5432
+- MongoDB: 27017
+- Redis: 6379
+- Elasticsearch: 9200
+- Kafka: 9092
+
+### Backend Issues
+```bash
+# Ensure virtual environment is activated
+cd backend && source .venv/bin/activate
+
+# Check if all dependencies are installed
+pip install -r requirements.txt
+
+# Verify database connection
+python -c "from app.core.config import settings; print(settings.POSTGRES_URL)"
+
+# Check if spaCy model is installed
+python -c "import spacy; nlp = spacy.load('en_core_web_sm'); print('spaCy model loaded')"
+```
+
+### API Keys and Configuration
+Make sure your `.env` file has the required API keys:
+```bash
+# Check current environment configuration
+cat .env
+
+# Verify required variables are set
+grep -E "TWITTER_BEARER_TOKEN|REDDIT_CLIENT_ID|SECRET_KEY" .env
+```

@@ -58,3 +58,20 @@ config/secrets.json
 
 # Cache
 .cache/
+
+# Development tools
+.serena/
+
+# Database folders (from containers)
+*postgres_data/
+*mongodb_data/
+*redis_data/
+*elasticsearch_data/
+
+# Log files and directories
+logs/
+*.log
+
+# Temporary files
+*.tmp
+*.temp
