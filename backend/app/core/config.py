@@ -2,9 +2,9 @@
 Application configuration settings.
 """
 
-from typing import List, Optional
-from pydantic import Field, validator
-from pydantic_settings import BaseSettings
+from typing import List, Optional, Union
+from pydantic import Field, field_validator, ConfigDict
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     
     # API Configuration
     API_PREFIX: str = "/api/v1"
-    ALLOWED_HOSTS: List[str] = Field(default=["*"], env="ALLOWED_HOSTS")
+    ALLOWED_HOSTS: Union[str, List[str]] = Field(default=["*"], env="ALLOWED_HOSTS")
     
     # Database URLs
     POSTGRES_URL: str = Field(env="POSTGRES_URL")
@@ -45,15 +45,19 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
     CLASSIFICATION_MODEL: str = "distilbert-base-uncased"
     
-    @validator("ALLOWED_HOSTS", pre=True)
-    def assemble_cors_origins(cls, v):
+    @field_validator("ALLOWED_HOSTS", mode="before")
+    @classmethod
+    def parse_allowed_hosts(cls, v):
         if isinstance(v, str):
-            return [i.strip() for i in v.split(",")]
-        return v
+            return [host.strip() for host in v.split(",")]
+        elif isinstance(v, list):
+            return v
+        return ["*"]  # fallback
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    model_config = SettingsConfigDict(
+        case_sensitive=True,
+        env_parse_none_str="None"
+    )
 
 
 settings = Settings()
