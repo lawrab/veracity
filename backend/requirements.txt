@@ -24,7 +24,7 @@ python-multipart==0.0.6
 
 # Machine Learning & NLP
 torch==2.1.1
-transformers==4.36.0
+transformers==4.53.0
 scikit-learn==1.3.2
 pandas==2.1.4
 numpy==1.24.4
