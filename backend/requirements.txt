@@ -17,11 +17,30 @@ aiohttp>=3.8.0
 # HTTP Client
 httpx>=0.25.0
 
+# Social Media APIs
+praw>=7.7.0  # Reddit API
+tweepy>=4.14.0  # Twitter API
+
 # Authentication & Security
 PyJWT>=2.10.1
 cryptography>=46.0.0
 passlib[bcrypt]>=1.7.4
 python-multipart>=0.0.6
+
+# NLP & Machine Learning
+spacy>=3.7.0
+transformers>=4.35.0
+scikit-learn>=1.3.0
+numpy>=1.24.0
+pandas>=2.1.0
+torch>=2.0.0
+sentence-transformers>=2.2.0
+
+# News & Content Processing
+newspaper3k>=0.2.8
+feedparser>=6.0.10  # RSS feed parsing
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
 
 # Utilities
 python-dotenv>=1.0.0
