@@ -37,11 +37,14 @@ def create_application() -> FastAPI:
 
     # Middleware
     app.add_middleware(GZipMiddleware, minimum_size=1000)
+    
+    # CORS - Allow frontend origins in development
+    cors_origins = ["*"] if settings.ENVIRONMENT == "development" else settings.ALLOWED_HOSTS
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.ALLOWED_HOSTS,
+        allow_origins=cors_origins,
         allow_credentials=True,
-        allow_methods=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
 
