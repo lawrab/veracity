@@ -72,6 +72,15 @@ config/secrets.json
 logs/
 *.log
 
+# Testing
+.coverage*
+coverage.xml
+.pytest_cache/
+htmlcov/
+.tox/
+test-results/
+junit.xml
+
 # Temporary files
 *.tmp
 *.temp
