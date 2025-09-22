@@ -164,7 +164,7 @@ class TwitterCollector:
         if not tweets:
             return 0
         
-        if not self.db:
+        if self.db is None:
             self.db = get_mongodb_db()
         
         collection = self.db.social_media_posts

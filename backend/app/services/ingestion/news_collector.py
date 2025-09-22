@@ -277,7 +277,7 @@ class NewsCollector:
         if not articles:
             return 0
         
-        if not self.db:
+        if self.db is None:
             self.db = get_mongodb_db()
         
         collection = self.db.news_articles
@@ -301,7 +301,7 @@ class NewsCollector:
     
     async def get_trending_topics(self) -> List[str]:
         """Extract trending topics from recent news articles."""
-        if not self.db:
+        if self.db is None:
             self.db = get_mongodb_db()
         
         try:
