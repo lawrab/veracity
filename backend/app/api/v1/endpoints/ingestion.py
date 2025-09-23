@@ -125,7 +125,7 @@ async def test_ingestion(background_tasks: BackgroundTasks):
 
         return IngestionResponse(
             message=(
-                f"Test ingestion started for subreddits: {', '.join(default_subreddits)}"
+                f"Test ingestion started for: {', '.join(default_subreddits)}"
             ),
             job_id="test_ingestion",
             status="started",

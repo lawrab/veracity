@@ -129,7 +129,7 @@ class TrustScorer:
                 "confidence": 0.0,
             }
 
-    async def _calculate_source_credibility(self, story: StoryResponse) -> float | None:
+    async def _calculate_source_credibility(self, _story: StoryResponse) -> float | None:
         """Calculate source credibility score based on historical accuracy."""
         # This would integrate with source tracking
         # For now, return a baseline score based on source diversity
@@ -166,7 +166,7 @@ class TrustScorer:
             return None
 
     async def _analyze_cross_platform_correlation(
-        self, story: StoryResponse
+        self, _story: StoryResponse
     ) -> float | None:
         """Analyze correlation across multiple platforms."""
         try:
@@ -182,7 +182,7 @@ class TrustScorer:
             return None
 
     async def _analyze_engagement_authenticity(
-        self, story: StoryResponse
+        self, _story: StoryResponse
     ) -> float | None:
         """Analyze engagement patterns for bot detection."""
         try:

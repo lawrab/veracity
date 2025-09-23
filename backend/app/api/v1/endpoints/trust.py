@@ -159,8 +159,9 @@ async def detect_bots(request: BotDetectionRequest):
         detection_result = await trust_scorer.detect_bots(request.posts)
 
         logger.info(
-            f"Bot detection completed: {detection_result['bot_probability']:.3f} probability, "
-            f"{len(detection_result['suspicious_accounts'])} suspicious accounts"
+            "Bot detection: %.3f probability, %d suspicious accounts",
+            detection_result["bot_probability"],
+            len(detection_result["suspicious_accounts"]),
         )
 
         return BotDetectionResponse(**detection_result)

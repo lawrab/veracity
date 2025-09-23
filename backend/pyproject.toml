@@ -334,9 +334,15 @@ ignore = [
 ]
 "app/services/ingestion/**/*" = [
     "PLC0415", # Allow imports inside functions for optional dependencies
+    "S324", # MD5 used for ID generation, not security
+    "S307", # eval used for configuration parsing with validation
 ]
 "app/services/processing/**/*" = [
     "PLC0415", # Allow imports inside functions for optional ML dependencies
+]
+"app/core/database.py" = [
+    "PLW0603", # Allow global statements for database connection management
+    "PLW0602", # Allow global usage for connection cleanup
 ]
 
 [tool.ruff.lint.mccabe]
