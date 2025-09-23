@@ -106,3 +106,7 @@ class WebSocketManager:
             channel: len(connections) 
             for channel, connections in self.active_connections.items()
         }
+
+
+# Global WebSocket manager instance
+websocket_manager = WebSocketManager()
