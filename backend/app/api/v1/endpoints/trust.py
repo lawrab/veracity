@@ -329,7 +329,9 @@ async def bulk_calculate_trust_scores(
                                 "type": signal_type,
                                 "value": signal_data["value"],
                                 "weight": signal_data["weight"],
-                                "explanation": f"{signal_type}: {signal_data['value']:.3f}",
+                                "explanation": (
+                                    f"{signal_type}: {signal_data['value']:.3f}"
+                                ),
                             }
                         )
 
@@ -349,7 +351,9 @@ async def bulk_calculate_trust_scores(
                 errors.append(f"Error processing story {story_id}: {e!s}")
 
         logger.info(
-            f"Bulk trust score calculation completed: {len(results)} success, {len(errors)} errors"
+            "Bulk trust calculation: %d success, %d errors",
+            len(results),
+            len(errors),
         )
 
         return {

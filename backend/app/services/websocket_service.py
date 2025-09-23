@@ -32,7 +32,9 @@ class WebSocketManager:
 
         self.active_connections[channel].add(websocket)
         logger.info(
-            f"Client connected to channel '{channel}'. Total: {len(self.active_connections[channel])}"
+            "Client connected to channel '%s'. Total: %d",
+            channel,
+            len(self.active_connections[channel]),
         )
 
     def disconnect(self, websocket: WebSocket, channel: str):

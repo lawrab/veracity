@@ -253,6 +253,9 @@ class SourceService:
 
         await self.db.commit()
         logger.info(
-            f"Updated credibility score for source {source_id}: {old_score} -> {new_score}"
+            "Updated credibility for source %d: %.2f -> %.2f",
+            source_id,
+            old_score,
+            new_score,
         )
         return True

@@ -321,8 +321,8 @@ class TestTrustLeaderboard:
         mock_story_service_class.return_value = mock_story_service
 
         # Mock database time query
-        mock_story_service.db.get_bind.return_value.execute.return_value.scalar.return_value = (
-            datetime.now(timezone.utc)
+        mock_story_service.db.get_bind.return_value.execute.return_value.scalar.return_value = datetime.now(
+            timezone.utc
         )
 
         response = client.get("/api/v1/trust/leaderboard")
@@ -347,8 +347,8 @@ class TestTrustLeaderboard:
         mock_story_service = AsyncMock()
         mock_story_service.get_stories.return_value = sample_stories_list
         mock_story_service_class.return_value = mock_story_service
-        mock_story_service.db.get_bind.return_value.execute.return_value.scalar.return_value = (
-            datetime.now(timezone.utc)
+        mock_story_service.db.get_bind.return_value.execute.return_value.scalar.return_value = datetime.now(
+            timezone.utc
         )
 
         response = client.get("/api/v1/trust/leaderboard?limit=5&category=technology")

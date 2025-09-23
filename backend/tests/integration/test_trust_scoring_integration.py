@@ -41,7 +41,7 @@ class TestTrustScoringIntegration:
         return source
 
     @pytest.fixture
-    async def sample_story(self, db_session, sample_source):
+    async def sample_story(self, db_session, _sample_source):
         """Create a sample story in the database."""
         story = Story(
             title="Breaking: Important Tech News",

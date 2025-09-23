@@ -385,7 +385,7 @@ class TrendDetector:
         """Analyze network patterns to detect coordinated behavior."""
         try:
             # Build interaction network
-            G = nx.Graph()
+            graph = nx.Graph()
 
             # Add nodes (users) and edges (interactions)
             for post in posts:
@@ -393,20 +393,20 @@ class TrendDetector:
                 mentions = post.get("mentions", [])
 
                 if author:
-                    G.add_node(author)
+                    graph.add_node(author)
 
                     # Add edges for mentions
                     for mentioned_user in mentions:
-                        G.add_edge(author, mentioned_user)
+                        graph.add_edge(author, mentioned_user)
 
             network_trends = []
 
             # Detect communities (potential coordinated groups)
-            if len(G.nodes()) > 10:
+            if len(graph.nodes()) > 10:
                 try:
                     from networkx.algorithms import community
 
-                    communities = community.greedy_modularity_communities(G)
+                    communities = community.greedy_modularity_communities(graph)
 
                     for i, comm in enumerate(communities):
                         if len(comm) >= 5:  # Significant community size

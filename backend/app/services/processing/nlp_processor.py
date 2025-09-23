@@ -297,17 +297,14 @@ class NLPProcessor:
             # Get top-k results
             top_indices = similarities.argsort()[-top_k:][::-1]
 
-            results = []
-            for idx in top_indices:
-                results.append(
-                    {
-                        "text": candidate_texts[idx],
-                        "similarity": float(similarities[idx]),
-                        "index": int(idx),
-                    }
-                )
-
-            return results
+            return [
+                {
+                    "text": candidate_texts[idx],
+                    "similarity": float(similarities[idx]),
+                    "index": int(idx),
+                }
+                for idx in top_indices
+            ]
 
         except Exception as e:
             logger.exception(f"Error in similarity search: {e}")

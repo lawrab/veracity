@@ -97,7 +97,9 @@ class NewsCollector:
                     if article:
                         collected_articles.append(article)
 
-                article_count = len([a for a in collected_articles if a["source"] == source_name])
+                article_count = len(
+                    [a for a in collected_articles if a["source"] == source_name]
+                )
                 logger.info("Collected %d articles from %s", article_count, source_name)
 
                 # Rate limiting

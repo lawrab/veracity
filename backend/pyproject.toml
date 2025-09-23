@@ -316,6 +316,10 @@ ignore = [
     "TRY301",
     # Allow try-except in loops for robust data processing
     "PERF203",
+    # Allow comments that look like code
+    "ERA001",
+    # Allow complex functions (sometimes needed for comprehensive logic)
+    "PLR0912", "PLR0913",
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -328,6 +332,9 @@ ignore = [
     "SLF001",  # Allow private member access in tests
     "BLE001",  # Allow catching Exception in tests
     "TRY301",  # Allow abstracting raise to inner functions in tests
+    "PLC0415", # Allow imports inside functions in tests
+    "ARG002",  # Allow unused method arguments in test fixtures
+    "E501",    # Allow long lines in test descriptions
 ]
 "app/models/**/*" = [
     "ARG001", # Allow unused arguments in model definitions

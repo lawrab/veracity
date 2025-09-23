@@ -129,7 +129,9 @@ class TrustScorer:
                 "confidence": 0.0,
             }
 
-    async def _calculate_source_credibility(self, _story: StoryResponse) -> float | None:
+    async def _calculate_source_credibility(
+        self, _story: StoryResponse
+    ) -> float | None:
         """Calculate source credibility score based on historical accuracy."""
         # This would integrate with source tracking
         # For now, return a baseline score based on source diversity
@@ -266,8 +268,7 @@ class TrustScorer:
                 "Bot detection and genuine interaction analysis"
             ),
             "temporal_consistency": (
-                f"Temporal consistency: {value_percentage}% - "
-                "Story stability over time"
+                f"Temporal consistency: {value_percentage}% - Story stability over time"
             ),
             "content_quality": (
                 f"Content quality: {value_percentage}% - "
@@ -396,7 +397,9 @@ class TrustScorer:
                 "suspicious_accounts": suspicious_accounts[:10],  # Limit output
                 "total_accounts_analyzed": len(account_stats),
                 "coordinated_indicators": coordinated_indicators,
-                "analysis": f"Analyzed {len(posts)} posts from {len(account_stats)} accounts",
+                "analysis": (
+                    f"Analyzed {len(posts)} posts from {len(account_stats)} accounts"
+                ),
             }
 
         except Exception as e:
