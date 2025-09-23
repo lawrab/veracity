@@ -1,2 +1,0 @@
-[console_scripts]
-veracity-server = app.main:start_server
