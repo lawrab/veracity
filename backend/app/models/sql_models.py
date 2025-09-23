@@ -2,23 +2,37 @@
 SQLAlchemy models for PostgreSQL database.
 """
 
+import uuid
 from datetime import datetime
-from typing import Optional, List
-from sqlalchemy import Column, String, DateTime, Float, Integer, Boolean, Text, JSON, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
+from typing import List, Optional
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-import uuid
 
 from app.core.database import Base
 
 
 class Source(Base):
     """Source model for tracking credibility of sources."""
+
     __tablename__ = "sources"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    platform = Column(String(50), nullable=False, index=True)  # twitter, reddit, news_site
+    platform = Column(
+        String(50), nullable=False, index=True
+    )  # twitter, reddit, news_site
     username = Column(String(255), nullable=True, index=True)
     display_name = Column(String(255), nullable=True)
     url = Column(String(500), nullable=True)
@@ -27,7 +41,7 @@ class Source(Base):
     credibility_score = Column(Float, default=50.0)  # 0-100 scale
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    
+
     # Relationships
     mentions = relationship("Mention", back_populates="source")
     credibility_history = relationship("CredibilityHistory", back_populates="source")
@@ -35,6 +49,7 @@ class Source(Base):
 
 class Story(Base):
     """Story model representing aggregated narratives."""
+
     __tablename__ = "stories"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -47,7 +62,7 @@ class Story(Base):
     first_seen_at = Column(DateTime(timezone=True), nullable=False)
     last_updated_at = Column(DateTime(timezone=True), server_default=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     # Relationships
     trends = relationship("Trend", back_populates="story")
     trust_signals = relationship("TrustSignal", back_populates="story")
@@ -56,6 +71,7 @@ class Story(Base):
 
 class Trend(Base):
     """Trend model for tracking emerging narratives."""
+
     __tablename__ = "trends"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -69,7 +85,7 @@ class Trend(Base):
     detected_at = Column(DateTime(timezone=True), server_default=func.now())
     peak_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     # Relationships
     story = relationship("Story", back_populates="trends")
     mentions = relationship("Mention", back_populates="trend")
@@ -77,6 +93,7 @@ class Trend(Base):
 
 class Mention(Base):
     """Individual social media posts/articles."""
+
     __tablename__ = "mentions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -90,7 +107,7 @@ class Mention(Base):
     language = Column(String(10), default="en")
     posted_at = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     # Relationships
     source = relationship("Source", back_populates="mentions")
     trend = relationship("Trend", back_populates="mentions")
@@ -98,22 +115,26 @@ class Mention(Base):
 
 class TrustSignal(Base):
     """Trust signals contributing to story credibility."""
+
     __tablename__ = "trust_signals"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     story_id = Column(UUID(as_uuid=True), ForeignKey("stories.id"), nullable=False)
-    signal_type = Column(String(100), nullable=False)  # source_diversity, velocity, etc.
+    signal_type = Column(
+        String(100), nullable=False
+    )  # source_diversity, velocity, etc.
     value = Column(Float, nullable=False)
     weight = Column(Float, default=1.0)
     explanation = Column(Text, nullable=True)
     calculated_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     # Relationships
     story = relationship("Story", back_populates="trust_signals")
 
 
 class Correlation(Base):
     """Correlations between social trends and mainstream news."""
+
     __tablename__ = "correlations"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -124,13 +145,14 @@ class Correlation(Base):
     similarity_score = Column(Float, nullable=False)  # 0-1
     time_to_mainstream_hours = Column(Float, nullable=True)
     found_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     # Relationships
     story = relationship("Story", back_populates="correlations")
 
 
 class CredibilityHistory(Base):
     """Historical credibility scores for sources."""
+
     __tablename__ = "credibility_history"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -138,6 +160,6 @@ class CredibilityHistory(Base):
     credibility_score = Column(Float, nullable=False)
     reason = Column(String(255), nullable=True)
     recorded_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     # Relationships
     source = relationship("Source", back_populates="credibility_history")

@@ -3,7 +3,9 @@ WebSocket endpoints for real-time updates.
 """
 
 from typing import Dict, Set
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
 from app.core.logging import get_logger
 from app.services.websocket_service import WebSocketManager
 
@@ -22,8 +24,7 @@ async def websocket_trends(websocket: WebSocket):
             data = await websocket.receive_text()
             # Echo back for now (can be extended for client commands)
             await websocket_manager.send_message_to_connection(
-                websocket, 
-                {"type": "ping", "data": data}
+                websocket, {"type": "ping", "data": data}
             )
     except WebSocketDisconnect:
         websocket_manager.disconnect(websocket, "trends")
@@ -39,8 +40,7 @@ async def websocket_story_updates(websocket: WebSocket, story_id: str):
         while True:
             data = await websocket.receive_text()
             await websocket_manager.send_message_to_connection(
-                websocket,
-                {"type": "story_update", "story_id": story_id, "data": data}
+                websocket, {"type": "story_update", "story_id": story_id, "data": data}
             )
     except WebSocketDisconnect:
         websocket_manager.disconnect(websocket, channel)
@@ -55,8 +55,7 @@ async def websocket_trust_scores(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             await websocket_manager.send_message_to_connection(
-                websocket,
-                {"type": "trust_score_update", "data": data}
+                websocket, {"type": "trust_score_update", "data": data}
             )
     except WebSocketDisconnect:
         websocket_manager.disconnect(websocket, "trust_scores")

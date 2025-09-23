@@ -4,7 +4,7 @@ Main API router for v1 endpoints.
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import trends, stories, sources, websocket, ingestion, trust
+from app.api.v1.endpoints import ingestion, sources, stories, trends, trust, websocket
 
 api_router = APIRouter()
 

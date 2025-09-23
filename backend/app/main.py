@@ -3,13 +3,14 @@ Main FastAPI application entry point for Veracity platform.
 """
 
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
-from app.core.config import settings
-from app.core.database import init_databases, close_databases
 from app.api.v1.router import api_router
+from app.core.config import settings
+from app.core.database import close_databases, init_databases
 from app.core.logging import setup_logging
 
 
@@ -37,9 +38,11 @@ def create_application() -> FastAPI:
 
     # Middleware
     app.add_middleware(GZipMiddleware, minimum_size=1000)
-    
+
     # CORS - Allow frontend origins in development
-    cors_origins = ["*"] if settings.ENVIRONMENT == "development" else settings.ALLOWED_HOSTS
+    cors_origins = (
+        ["*"] if settings.ENVIRONMENT == "development" else settings.ALLOWED_HOSTS
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins,
@@ -65,7 +68,7 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",

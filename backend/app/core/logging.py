@@ -14,7 +14,7 @@ from app.core.config import settings
 
 def setup_logging() -> None:
     """Configure structured logging."""
-    
+
     # Configure structlog
     structlog.configure(
         processors=[
@@ -32,8 +32,11 @@ def setup_logging() -> None:
             # If some value is in bytes, decode it to a unicode str
             structlog.processors.UnicodeDecoder(),
             # Render the final event dict as JSON
-            structlog.processors.JSONRenderer() if settings.ENVIRONMENT == "production"
-            else structlog.dev.ConsoleRenderer(colors=True),
+            (
+                structlog.processors.JSONRenderer()
+                if settings.ENVIRONMENT == "production"
+                else structlog.dev.ConsoleRenderer(colors=True)
+            ),
         ],
         # `wrapper_class` is the bound logger that you get back from
         # get_logger(). This one imitates the API of `logging.Logger`.

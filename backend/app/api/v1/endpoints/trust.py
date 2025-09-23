@@ -5,17 +5,18 @@ Provides REST API for trust score calculations, bot detection,
 and trust score management.
 """
 
-from typing import List, Optional, Dict, Any
+import logging
+from typing import Any, Dict, List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_postgres_session
+from app.schemas.story import StoryResponse
 from app.services.scoring.trust_scorer import TrustScorer
 from app.services.story_service import StoryService
 from app.services.websocket_service import websocket_manager
-from app.schemas.story import StoryResponse
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -24,41 +25,58 @@ router = APIRouter(prefix="/trust", tags=["trust-scoring"])
 
 class TrustScoreRequest(BaseModel):
     """Request schema for trust score calculation."""
+
     story_id: str
 
 
 class BotDetectionRequest(BaseModel):
     """Request schema for bot detection analysis."""
-    posts: List[Dict[str, Any]] = Field(..., description="Social media posts to analyze")
+
+    posts: List[Dict[str, Any]] = Field(
+        ..., description="Social media posts to analyze"
+    )
 
 
 class TrustScoreResponse(BaseModel):
     """Response schema for trust score results."""
+
     score: float = Field(..., ge=0.0, le=1.0, description="Trust score (0-1)")
-    score_percentage: float = Field(..., ge=0.0, le=100.0, description="Trust score as percentage")
-    signals: Dict[str, Dict[str, Any]] = Field(..., description="Individual trust signals")
+    score_percentage: float = Field(
+        ..., ge=0.0, le=100.0, description="Trust score as percentage"
+    )
+    signals: Dict[str, Dict[str, Any]] = Field(
+        ..., description="Individual trust signals"
+    )
     explanation: List[str] = Field(..., description="Human-readable explanations")
     calculated_at: str = Field(..., description="Calculation timestamp")
-    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence in the score")
+    confidence: float = Field(
+        ..., ge=0.0, le=1.0, description="Confidence in the score"
+    )
 
 
 class BotDetectionResponse(BaseModel):
     """Response schema for bot detection results."""
-    bot_probability: float = Field(..., ge=0.0, le=1.0, description="Bot probability score")
-    coordinated_campaign: bool = Field(..., description="Whether coordinated campaign detected")
-    suspicious_accounts: List[Dict[str, Any]] = Field(..., description="List of suspicious accounts")
+
+    bot_probability: float = Field(
+        ..., ge=0.0, le=1.0, description="Bot probability score"
+    )
+    coordinated_campaign: bool = Field(
+        ..., description="Whether coordinated campaign detected"
+    )
+    suspicious_accounts: List[Dict[str, Any]] = Field(
+        ..., description="List of suspicious accounts"
+    )
     total_accounts_analyzed: int = Field(..., description="Total accounts analyzed")
     analysis: str = Field(..., description="Analysis summary")
 
 
 @router.post("/calculate", response_model=TrustScoreResponse)
 async def calculate_trust_score(
-    request: TrustScoreRequest,
-    db: AsyncSession = Depends(get_postgres_session)
+    request: TrustScoreRequest, db: AsyncSession = Depends(get_postgres_session)
 ):
     """
     Calculate trust score for a specific story.
-    
+
     Analyzes multiple signals including source credibility, velocity patterns,
     cross-platform correlation, and engagement authenticity to generate
     a comprehensive trust score.
@@ -67,43 +85,45 @@ async def calculate_trust_score(
         # Get story
         story_service = StoryService(db)
         story = await story_service.get_story_by_id(request.story_id)
-        
+
         if not story:
             raise HTTPException(status_code=404, detail="Story not found")
-        
+
         # Calculate trust score
         trust_scorer = TrustScorer()
         score_result = await trust_scorer.calculate_score(story)
-        
+
         # Store trust signals in database
         signals_for_db = []
         for signal_type, signal_data in score_result["signals"].items():
             if signal_data["value"] is not None:
-                signals_for_db.append({
-                    "type": signal_type,
-                    "value": signal_data["value"],
-                    "weight": signal_data["weight"],
-                    "explanation": f"{signal_type}: {signal_data['value']:.3f}"
-                })
-        
+                signals_for_db.append(
+                    {
+                        "type": signal_type,
+                        "value": signal_data["value"],
+                        "weight": signal_data["weight"],
+                        "explanation": f"{signal_type}: {signal_data['value']:.3f}",
+                    }
+                )
+
         # Update story trust score
         await story_service.update_trust_score(
             request.story_id,
             score_result["score"] * 100,  # Convert to 0-100 scale for DB
-            signals_for_db
+            signals_for_db,
         )
-        
+
         # Broadcast update via WebSocket
         await websocket_manager.broadcast_trust_score_update(
-            request.story_id,
-            score_result["score_percentage"],
-            score_result["signals"]
+            request.story_id, score_result["score_percentage"], score_result["signals"]
         )
-        
-        logger.info(f"Calculated trust score for story {request.story_id}: {score_result['score_percentage']:.1f}%")
-        
+
+        logger.info(
+            f"Calculated trust score for story {request.story_id}: {score_result['score_percentage']:.1f}%"
+        )
+
         return TrustScoreResponse(**score_result)
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -115,27 +135,31 @@ async def calculate_trust_score(
 async def detect_bots(request: BotDetectionRequest):
     """
     Analyze posts for bot activity and coordinated campaigns.
-    
+
     Examines posting patterns, engagement ratios, timing analysis,
     and content similarity to identify potential bot networks
     and coordinated inauthentic behavior.
     """
     try:
         if not request.posts:
-            raise HTTPException(status_code=400, detail="No posts provided for analysis")
-        
+            raise HTTPException(
+                status_code=400, detail="No posts provided for analysis"
+            )
+
         if len(request.posts) > 1000:
             raise HTTPException(status_code=400, detail="Too many posts (max 1000)")
-        
+
         # Perform bot detection
         trust_scorer = TrustScorer()
         detection_result = await trust_scorer.detect_bots(request.posts)
-        
-        logger.info(f"Bot detection completed: {detection_result['bot_probability']:.3f} probability, "
-                   f"{len(detection_result['suspicious_accounts'])} suspicious accounts")
-        
+
+        logger.info(
+            f"Bot detection completed: {detection_result['bot_probability']:.3f} probability, "
+            f"{len(detection_result['suspicious_accounts'])} suspicious accounts"
+        )
+
         return BotDetectionResponse(**detection_result)
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -147,43 +171,43 @@ async def detect_bots(request: BotDetectionRequest):
 async def get_current_trust_score(
     story_id: str,
     recalculate: bool = Query(False, description="Whether to recalculate score"),
-    db: AsyncSession = Depends(get_postgres_session)
+    db: AsyncSession = Depends(get_postgres_session),
 ):
     """
     Get current trust score for a story.
-    
+
     Returns the most recent trust score calculation. If recalculate=true,
     performs a fresh calculation instead of returning cached results.
     """
     try:
         story_service = StoryService(db)
         story = await story_service.get_story_by_id(story_id)
-        
+
         if not story:
             raise HTTPException(status_code=404, detail="Story not found")
-        
+
         if recalculate:
             # Perform fresh calculation
             trust_scorer = TrustScorer()
             score_result = await trust_scorer.calculate_score(story)
-            
+
             # Update database
             signals_for_db = []
             for signal_type, signal_data in score_result["signals"].items():
                 if signal_data["value"] is not None:
-                    signals_for_db.append({
-                        "type": signal_type,
-                        "value": signal_data["value"],
-                        "weight": signal_data["weight"],
-                        "explanation": f"{signal_type}: {signal_data['value']:.3f}"
-                    })
-            
+                    signals_for_db.append(
+                        {
+                            "type": signal_type,
+                            "value": signal_data["value"],
+                            "weight": signal_data["weight"],
+                            "explanation": f"{signal_type}: {signal_data['value']:.3f}",
+                        }
+                    )
+
             await story_service.update_trust_score(
-                story_id,
-                score_result["score"] * 100,
-                signals_for_db
+                story_id, score_result["score"] * 100, signals_for_db
             )
-            
+
             return TrustScoreResponse(**score_result)
         else:
             # Return current score from database
@@ -193,9 +217,9 @@ async def get_current_trust_score(
                 signals={},
                 explanation=[f"Current trust score: {story.trust_score:.1f}%"],
                 calculated_at=story.last_updated_at.isoformat(),
-                confidence=0.8  # Default confidence for stored scores
+                confidence=0.8,  # Default confidence for stored scores
             )
-            
+
     except HTTPException:
         raise
     except Exception as e:
@@ -207,28 +231,25 @@ async def get_current_trust_score(
 async def get_trust_leaderboard(
     limit: int = Query(10, ge=1, le=100, description="Number of top stories to return"),
     category: Optional[str] = Query(None, description="Filter by story category"),
-    db: AsyncSession = Depends(get_postgres_session)
+    db: AsyncSession = Depends(get_postgres_session),
 ):
     """
     Get stories ranked by trust score.
-    
+
     Returns the highest-scoring stories based on trust analysis,
     useful for identifying the most credible content.
     """
     try:
         story_service = StoryService(db)
-        
+
         # Get top stories by trust score
         stories = await story_service.get_stories(
-            skip=0,
-            limit=limit,
-            trust_score_min=0.0,
-            category=category
+            skip=0, limit=limit, trust_score_min=0.0, category=category
         )
-        
+
         # Sort by trust score (descending)
         sorted_stories = sorted(stories, key=lambda s: s.trust_score, reverse=True)
-        
+
         return {
             "stories": [
                 {
@@ -239,15 +260,17 @@ async def get_trust_leaderboard(
                     "category": story.category,
                     "velocity": story.velocity,
                     "last_updated": story.last_updated_at,
-                    "created_at": story.created_at
+                    "created_at": story.created_at,
                 }
                 for story in sorted_stories
             ],
             "total": len(sorted_stories),
             "category_filter": category,
-            "generated_at": story_service.db.get_bind().execute("SELECT NOW()").scalar()
+            "generated_at": story_service.db.get_bind()
+            .execute("SELECT NOW()")
+            .scalar(),
         }
-        
+
     except Exception as e:
         logger.error(f"Error getting trust leaderboard: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -255,30 +278,32 @@ async def get_trust_leaderboard(
 
 class BulkCalculateRequest(BaseModel):
     """Request schema for bulk trust score calculation."""
-    story_ids: List[str] = Field(..., max_items=50, description="List of story IDs to process")
+
+    story_ids: List[str] = Field(
+        ..., max_items=50, description="List of story IDs to process"
+    )
 
 
 @router.post("/bulk-calculate")
 async def bulk_calculate_trust_scores(
-    request: BulkCalculateRequest,
-    db: AsyncSession = Depends(get_postgres_session)
+    request: BulkCalculateRequest, db: AsyncSession = Depends(get_postgres_session)
 ):
     """
     Calculate trust scores for multiple stories in bulk.
-    
+
     Efficiently processes multiple stories for trust score calculation.
     Limited to 50 stories per request to prevent performance issues.
     """
     try:
         if len(request.story_ids) > 50:
             raise HTTPException(status_code=400, detail="Too many stories (max 50)")
-        
+
         story_service = StoryService(db)
         trust_scorer = TrustScorer()
-        
+
         results = []
         errors = []
-        
+
         for story_id in request.story_ids:
             try:
                 # Get story
@@ -286,45 +311,49 @@ async def bulk_calculate_trust_scores(
                 if not story:
                     errors.append(f"Story {story_id} not found")
                     continue
-                
+
                 # Calculate score
                 score_result = await trust_scorer.calculate_score(story)
-                
+
                 # Update database
                 signals_for_db = []
                 for signal_type, signal_data in score_result["signals"].items():
                     if signal_data["value"] is not None:
-                        signals_for_db.append({
-                            "type": signal_type,
-                            "value": signal_data["value"],
-                            "weight": signal_data["weight"],
-                            "explanation": f"{signal_type}: {signal_data['value']:.3f}"
-                        })
-                
+                        signals_for_db.append(
+                            {
+                                "type": signal_type,
+                                "value": signal_data["value"],
+                                "weight": signal_data["weight"],
+                                "explanation": f"{signal_type}: {signal_data['value']:.3f}",
+                            }
+                        )
+
                 await story_service.update_trust_score(
-                    story_id,
-                    score_result["score"] * 100,
-                    signals_for_db
+                    story_id, score_result["score"] * 100, signals_for_db
                 )
-                
-                results.append({
-                    "story_id": story_id,
-                    "trust_score": score_result["score_percentage"],
-                    "confidence": score_result["confidence"]
-                })
-                
+
+                results.append(
+                    {
+                        "story_id": story_id,
+                        "trust_score": score_result["score_percentage"],
+                        "confidence": score_result["confidence"],
+                    }
+                )
+
             except Exception as e:
                 errors.append(f"Error processing story {story_id}: {str(e)}")
-        
-        logger.info(f"Bulk trust score calculation completed: {len(results)} success, {len(errors)} errors")
-        
+
+        logger.info(
+            f"Bulk trust score calculation completed: {len(results)} success, {len(errors)} errors"
+        )
+
         return {
             "processed": len(results),
             "errors": len(errors),
             "results": results,
-            "error_details": errors
+            "error_details": errors,
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:

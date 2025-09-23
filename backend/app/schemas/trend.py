@@ -4,12 +4,14 @@ Trend schema definitions.
 
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, Field
 from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 
 class TrendBase(BaseModel):
     """Base trend schema."""
+
     keywords: List[str]
     hashtags: Optional[List[str]] = None
     platforms: List[str]
@@ -20,11 +22,13 @@ class TrendBase(BaseModel):
 
 class TrendCreate(TrendBase):
     """Schema for creating trends."""
+
     story_id: Optional[UUID] = None
 
 
 class TrendUpdate(BaseModel):
     """Schema for updating trends."""
+
     mention_count: Optional[int] = None
     velocity: Optional[float] = None
     sentiment_score: Optional[float] = None
@@ -33,6 +37,7 @@ class TrendUpdate(BaseModel):
 
 class TrendResponse(TrendBase):
     """Schema for trend responses."""
+
     id: UUID
     story_id: Optional[UUID] = None
     detected_at: datetime
@@ -45,6 +50,7 @@ class TrendResponse(TrendBase):
 
 class TrendEvolution(BaseModel):
     """Schema for trend evolution data."""
+
     timestamps: List[datetime]
     mention_counts: List[int]
     velocity_values: List[float]
@@ -53,6 +59,7 @@ class TrendEvolution(BaseModel):
 
 class TrendSource(BaseModel):
     """Schema for trend source information."""
+
     platform: str
     source_count: int
     mention_count: int

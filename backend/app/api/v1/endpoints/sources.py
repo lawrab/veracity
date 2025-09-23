@@ -3,6 +3,7 @@ Sources API endpoints.
 """
 
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,7 +24,7 @@ async def get_sources(
 ):
     """
     Get sources with optional filtering.
-    
+
     - **skip**: Number of sources to skip
     - **limit**: Maximum number of sources to return
     - **platform**: Filter by platform type
@@ -31,10 +32,7 @@ async def get_sources(
     """
     source_service = SourceService(db)
     return await source_service.get_sources(
-        skip=skip,
-        limit=limit,
-        platform=platform,
-        verified_only=verified_only
+        skip=skip, limit=limit, platform=platform, verified_only=verified_only
     )
 
 

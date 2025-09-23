@@ -3,11 +3,12 @@ Trends API endpoints.
 """
 
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_postgres_session
-from app.schemas.trend import TrendResponse, TrendCreate
+from app.schemas.trend import TrendCreate, TrendResponse
 from app.services.trend_service import TrendService
 
 router = APIRouter()
@@ -23,7 +24,7 @@ async def get_trends(
 ):
     """
     Get trending topics with optional filtering.
-    
+
     - **skip**: Number of trends to skip
     - **limit**: Maximum number of trends to return
     - **platform**: Filter by platform (twitter, reddit, etc.)
@@ -31,10 +32,7 @@ async def get_trends(
     """
     trend_service = TrendService(db)
     return await trend_service.get_trending(
-        skip=skip, 
-        limit=limit, 
-        platform=platform,
-        time_window=time_window
+        skip=skip, limit=limit, platform=platform, time_window=time_window
     )
 
 

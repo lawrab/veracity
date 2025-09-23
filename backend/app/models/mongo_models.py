@@ -3,13 +3,15 @@ MongoDB document models for raw social media data.
 """
 
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
-from pymongo import IndexModel, ASCENDING, DESCENDING, TEXT
+from pymongo import ASCENDING, DESCENDING, TEXT, IndexModel
 
 
 class SocialMediaPost(BaseModel):
     """Raw social media post document."""
+
     id: str = Field(alias="_id")
     platform: str  # twitter, reddit, tiktok, instagram
     external_id: str  # Platform-specific ID
@@ -34,6 +36,7 @@ class SocialMediaPost(BaseModel):
 
 class NewsArticle(BaseModel):
     """News article document."""
+
     id: str = Field(alias="_id")
     title: str
     content: str
@@ -55,6 +58,7 @@ class NewsArticle(BaseModel):
 
 class ProcessingQueue(BaseModel):
     """Queue item for processing pipeline."""
+
     id: str = Field(alias="_id")
     item_id: str
     item_type: str  # post, article, trend
@@ -73,6 +77,7 @@ class ProcessingQueue(BaseModel):
 
 class EmbeddingVector(BaseModel):
     """Document embeddings for similarity search."""
+
     id: str = Field(alias="_id")
     content_id: str  # Reference to post or article
     content_type: str  # post, article, story

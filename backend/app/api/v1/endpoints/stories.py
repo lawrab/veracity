@@ -3,11 +3,12 @@ Stories API endpoints.
 """
 
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_postgres_session
-from app.schemas.story import StoryResponse, StoryCreate
+from app.schemas.story import StoryCreate, StoryResponse
 from app.services.story_service import StoryService
 
 router = APIRouter()
@@ -23,7 +24,7 @@ async def get_stories(
 ):
     """
     Get stories with optional filtering.
-    
+
     - **skip**: Number of stories to skip
     - **limit**: Maximum number of stories to return
     - **trust_score_min**: Minimum trust score filter
@@ -31,10 +32,7 @@ async def get_stories(
     """
     story_service = StoryService(db)
     return await story_service.get_stories(
-        skip=skip,
-        limit=limit,
-        trust_score_min=trust_score_min,
-        category=category
+        skip=skip, limit=limit, trust_score_min=trust_score_min, category=category
     )
 
 
