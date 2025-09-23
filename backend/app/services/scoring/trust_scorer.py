@@ -6,17 +6,16 @@ Combines source credibility, velocity patterns, engagement analysis, and cross-p
 correlation to generate dynamic trust scores.
 """
 
-import asyncio
-import logging
-import math
-import statistics
-from collections import Counter, defaultdict
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from __future__ import annotations
 
-from app.core.database import get_postgres_session
-from app.models.sql_models import Correlation, Source, Story, TrustSignal
-from app.schemas.story import StoryResponse
+import logging
+import statistics
+from collections import defaultdict
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from app.schemas.story import StoryResponse
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +51,7 @@ class TrustScorer:
             "coordinated_timing_window": 300,  # seconds
         }
 
-    async def calculate_score(self, story: StoryResponse) -> Dict[str, Any]:
+    async def calculate_score(self, story: StoryResponse) -> dict[str, Any]:
         """
         Calculate comprehensive trust score for a story.
 
@@ -71,12 +70,12 @@ class TrustScorer:
                 story
             )
             signals["velocity_pattern"] = await self._analyze_velocity_pattern(story)
-            signals["cross_platform_correlation"] = (
-                await self._analyze_cross_platform_correlation(story)
-            )
-            signals["engagement_authenticity"] = (
-                await self._analyze_engagement_authenticity(story)
-            )
+            signals[
+                "cross_platform_correlation"
+            ] = await self._analyze_cross_platform_correlation(story)
+            signals[
+                "engagement_authenticity"
+            ] = await self._analyze_engagement_authenticity(story)
             signals["temporal_consistency"] = await self._analyze_temporal_consistency(
                 story
             )
@@ -120,7 +119,7 @@ class TrustScorer:
             }
 
         except Exception as e:
-            logger.error(f"Error calculating trust score for story {story.id}: {e}")
+            logger.exception(f"Error calculating trust score for story {story.id}: {e}")
             return {
                 "score": 0.5,
                 "score_percentage": 50.0,
@@ -130,9 +129,7 @@ class TrustScorer:
                 "confidence": 0.0,
             }
 
-    async def _calculate_source_credibility(
-        self, story: StoryResponse
-    ) -> Optional[float]:
+    async def _calculate_source_credibility(self, story: StoryResponse) -> float | None:
         """Calculate source credibility score based on historical accuracy."""
         # This would integrate with source tracking
         # For now, return a baseline score based on source diversity
@@ -141,10 +138,10 @@ class TrustScorer:
             # In production, this would query CredibilityHistory table
             return 0.7  # Placeholder
         except Exception as e:
-            logger.error(f"Error calculating source credibility: {e}")
+            logger.exception(f"Error calculating source credibility: {e}")
             return None
 
-    async def _analyze_velocity_pattern(self, story: StoryResponse) -> Optional[float]:
+    async def _analyze_velocity_pattern(self, story: StoryResponse) -> float | None:
         """Analyze story velocity pattern for authenticity."""
         try:
             velocity = story.velocity
@@ -158,20 +155,19 @@ class TrustScorer:
 
             if velocity < 0.1:
                 return 0.8  # Slow, organic spread
-            elif velocity < 1.0:
+            if velocity < 1.0:
                 return 0.9  # Moderate viral spread
-            elif velocity < 10.0:
+            if velocity < 10.0:
                 return 0.6  # Fast spread - could be artificial
-            else:
-                return 0.3  # Very fast - likely artificial amplification
+            return 0.3  # Very fast - likely artificial amplification
 
         except Exception as e:
-            logger.error(f"Error analyzing velocity pattern: {e}")
+            logger.exception(f"Error analyzing velocity pattern: {e}")
             return None
 
     async def _analyze_cross_platform_correlation(
         self, story: StoryResponse
-    ) -> Optional[float]:
+    ) -> float | None:
         """Analyze correlation across multiple platforms."""
         try:
             # This would analyze trends across Twitter, Reddit, TikTok, etc.
@@ -182,12 +178,12 @@ class TrustScorer:
             return 0.75
 
         except Exception as e:
-            logger.error(f"Error analyzing cross-platform correlation: {e}")
+            logger.exception(f"Error analyzing cross-platform correlation: {e}")
             return None
 
     async def _analyze_engagement_authenticity(
         self, story: StoryResponse
-    ) -> Optional[float]:
+    ) -> float | None:
         """Analyze engagement patterns for bot detection."""
         try:
             # Analyze engagement ratios, timing patterns, account diversity
@@ -198,12 +194,10 @@ class TrustScorer:
             return 0.8
 
         except Exception as e:
-            logger.error(f"Error analyzing engagement authenticity: {e}")
+            logger.exception(f"Error analyzing engagement authenticity: {e}")
             return None
 
-    async def _analyze_temporal_consistency(
-        self, story: StoryResponse
-    ) -> Optional[float]:
+    async def _analyze_temporal_consistency(self, story: StoryResponse) -> float | None:
         """Analyze temporal consistency of story evolution."""
         try:
             # Check if story details remain consistent over time
@@ -217,16 +211,15 @@ class TrustScorer:
 
             if hours_since < 1:
                 return 0.6  # Too new to assess
-            elif hours_since < 24:
+            if hours_since < 24:
                 return 0.8  # Recent, likely consistent
-            else:
-                return 0.9  # Mature story, proven consistent
+            return 0.9  # Mature story, proven consistent
 
         except Exception as e:
-            logger.error(f"Error analyzing temporal consistency: {e}")
+            logger.exception(f"Error analyzing temporal consistency: {e}")
             return None
 
-    async def _analyze_content_quality(self, story: StoryResponse) -> Optional[float]:
+    async def _analyze_content_quality(self, story: StoryResponse) -> float | None:
         """Analyze content quality indicators."""
         try:
             # Analyze text quality, completeness, source attribution
@@ -236,19 +229,18 @@ class TrustScorer:
 
             if content_length < 50:
                 return 0.4  # Very short content
-            elif content_length < 200:
+            if content_length < 200:
                 return 0.6  # Brief content
-            elif content_length < 1000:
+            if content_length < 1000:
                 return 0.8  # Good length content
-            else:
-                return 0.9  # Comprehensive content
+            return 0.9  # Comprehensive content
 
         except Exception as e:
-            logger.error(f"Error analyzing content quality: {e}")
+            logger.exception(f"Error analyzing content quality: {e}")
             return None
 
     def _generate_signal_explanation(
-        self, signal_type: str, value: Optional[float]
+        self, signal_type: str, value: float | None
     ) -> str:
         """Generate human-readable explanation for a trust signal."""
         if value is None:
@@ -267,7 +259,7 @@ class TrustScorer:
 
         return explanations.get(signal_type, f"{signal_type}: {value_percentage}%")
 
-    def _calculate_confidence(self, signals: Dict[str, Optional[float]]) -> float:
+    def _calculate_confidence(self, signals: dict[str, float | None]) -> float:
         """Calculate confidence level in the trust score."""
         available_signals = sum(1 for v in signals.values() if v is not None)
         total_signals = len(signals)
@@ -282,7 +274,7 @@ class TrustScorer:
 
         return min(1.0, data_confidence)
 
-    async def detect_bots(self, posts: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def detect_bots(self, posts: list[dict[str, Any]]) -> dict[str, Any]:
         """
         Detect bot activity and coordinated campaigns in posts.
 
@@ -365,7 +357,7 @@ class TrustScorer:
                 coordinated_indicators += 1
 
             # Check for content similarity (placeholder)
-            unique_content = set(post.get("content", "")[:50] for post in posts)
+            unique_content = {post.get("content", "")[:50] for post in posts}
             if len(unique_content) < len(posts) * 0.7:  # High similarity
                 coordinated_indicators += 1
 
@@ -390,16 +382,16 @@ class TrustScorer:
             }
 
         except Exception as e:
-            logger.error(f"Error in bot detection: {e}")
+            logger.exception(f"Error in bot detection: {e}")
             return {
                 "bot_probability": 0.0,
                 "coordinated_campaign": False,
                 "suspicious_accounts": [],
-                "analysis": f"Error in bot detection: {str(e)}",
+                "analysis": f"Error in bot detection: {e!s}",
             }
 
     async def update_with_correlation(
-        self, article: Dict[str, Any], correlation: Dict[str, Any]
+        self, article: dict[str, Any], correlation: dict[str, Any]
     ) -> float:
         """
         Update trust score based on news correlation.
@@ -435,5 +427,5 @@ class TrustScorer:
             return updated_score
 
         except Exception as e:
-            logger.error(f"Error updating trust score with correlation: {e}")
+            logger.exception(f"Error updating trust score with correlation: {e}")
             return article.get("trust_score", 0.5)

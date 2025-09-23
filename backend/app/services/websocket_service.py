@@ -2,13 +2,16 @@
 WebSocket service for real-time communications.
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
-from typing import Dict, Set
-
-from fastapi import WebSocket
+from typing import TYPE_CHECKING
 
 from app.core.logging import get_logger
+
+if TYPE_CHECKING:
+    from fastapi import WebSocket
 
 logger = get_logger(__name__)
 
@@ -18,7 +21,7 @@ class WebSocketManager:
 
     def __init__(self):
         # Channel -> Set of connections
-        self.active_connections: Dict[str, Set[WebSocket]] = {}
+        self.active_connections: dict[str, set[WebSocket]] = {}
 
     async def connect(self, websocket: WebSocket, channel: str):
         """Accept a WebSocket connection and add to channel."""
@@ -46,7 +49,7 @@ class WebSocketManager:
         try:
             await websocket.send_text(json.dumps(message))
         except Exception as e:
-            logger.error(f"Error sending message to connection: {e}")
+            logger.exception(f"Error sending message to connection: {e}")
 
     async def broadcast_to_channel(self, channel: str, message: dict):
         """Broadcast message to all connections in a channel."""
@@ -60,7 +63,7 @@ class WebSocketManager:
             try:
                 await websocket.send_text(message_text)
             except Exception as e:
-                logger.error(f"Error broadcasting to connection: {e}")
+                logger.exception(f"Error broadcasting to connection: {e}")
                 disconnected.add(websocket)
 
         # Remove disconnected connections
@@ -109,7 +112,7 @@ class WebSocketManager:
         if story_id:
             await self.broadcast_to_channel(f"story_{story_id}", message)
 
-    def get_channel_stats(self) -> Dict[str, int]:
+    def get_channel_stats(self) -> dict[str, int]:
         """Get statistics about active connections."""
         return {
             channel: len(connections)

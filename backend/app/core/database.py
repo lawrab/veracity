@@ -2,8 +2,7 @@
 Database connection management.
 """
 
-import asyncio
-from typing import Optional
+from __future__ import annotations
 
 import redis.asyncio as redis
 from elasticsearch import AsyncElasticsearch
@@ -28,14 +27,14 @@ AsyncSessionLocal = async_sessionmaker(
 Base = declarative_base()
 
 # MongoDB client
-mongodb_client: Optional[AsyncIOMotorClient] = None
+mongodb_client: AsyncIOMotorClient | None = None
 mongodb_db = None
 
 # Redis client
-redis_client: Optional[redis.Redis] = None
+redis_client: redis.Redis | None = None
 
 # Elasticsearch client
-elasticsearch_client: Optional[AsyncElasticsearch] = None
+elasticsearch_client: AsyncElasticsearch | None = None
 
 
 async def get_postgres_session() -> AsyncSession:

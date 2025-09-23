@@ -2,7 +2,7 @@
 
 import asyncio
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -137,7 +137,7 @@ class TestCompleteWorkflow:
 
         # Find cross-platform trends
         cross_platform = [
-            t for t in trends if len(set(p["platform"] for p in t.get("posts", []))) > 1
+            t for t in trends if len({p["platform"] for p in t.get("posts", [])}) > 1
         ]
 
         assert len(cross_platform) > 0

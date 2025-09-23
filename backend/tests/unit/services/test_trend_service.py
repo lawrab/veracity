@@ -17,8 +17,7 @@ class TestTrendService:
     @pytest.fixture
     def mock_db_session(self):
         """Create mock database session."""
-        session = AsyncMock(spec=AsyncSession)
-        return session
+        return AsyncMock(spec=AsyncSession)
 
     @pytest.fixture
     def trend_service(self, mock_db_session):
@@ -104,7 +103,7 @@ class TestTrendService:
         mock_db_session.commit = AsyncMock()
         mock_db_session.refresh = AsyncMock()
 
-        result = await trend_service.create_trend(trend_data)
+        await trend_service.create_trend(trend_data)
 
         mock_db_session.add.assert_called_once()
         mock_db_session.commit.assert_called_once()

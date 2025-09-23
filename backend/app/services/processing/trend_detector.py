@@ -2,16 +2,16 @@
 Trend detection algorithm for identifying emerging narratives.
 """
 
-import asyncio
+from __future__ import annotations
+
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime
+from typing import Any
 
 import networkx as nx
 import numpy as np
 from sklearn.cluster import DBSCAN
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 
 from app.core.database import get_mongodb_db, get_redis_client
 from app.core.logging import get_logger
@@ -36,8 +36,8 @@ class TrendDetector:
         logger.info("Trend detector initialized")
 
     async def detect_trends(
-        self, posts: List[Dict[str, Any]], time_window_hours: int = 2
-    ) -> List[Dict[str, Any]]:
+        self, posts: list[dict[str, Any]], time_window_hours: int = 2
+    ) -> list[dict[str, Any]]:
         """Detect trends from a collection of posts."""
         try:
             if len(posts) < self.min_mentions:
@@ -72,12 +72,12 @@ class TrendDetector:
             return filtered_trends
 
         except Exception as e:
-            logger.error(f"Error detecting trends: {e}")
+            logger.exception(f"Error detecting trends: {e}")
             return []
 
     def _group_posts_by_time(
-        self, posts: List[Dict[str, Any]], window_minutes: int = 60
-    ) -> Dict[str, List[Dict[str, Any]]]:
+        self, posts: list[dict[str, Any]], window_minutes: int = 60
+    ) -> dict[str, list[dict[str, Any]]]:
         """Group posts by time windows."""
         time_groups = defaultdict(list)
 
@@ -98,8 +98,8 @@ class TrendDetector:
         return dict(time_groups)
 
     async def _cluster_content(
-        self, posts: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+        self, posts: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """Cluster posts by content similarity."""
         try:
             if len(posts) < 3:
@@ -152,17 +152,17 @@ class TrendDetector:
             return clusters
 
         except Exception as e:
-            logger.error(f"Error in content clustering: {e}")
+            logger.exception(f"Error in content clustering: {e}")
             return []
 
     def _analyze_cluster(
         self,
-        cluster_posts: List[Dict[str, Any]],
+        cluster_posts: list[dict[str, Any]],
         vectorizer,
         tfidf_matrix,
         labels,
         cluster_id,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Analyze a content cluster to extract trend information."""
         try:
             # Get cluster posts indices
@@ -219,12 +219,12 @@ class TrendDetector:
             }
 
         except Exception as e:
-            logger.error(f"Error analyzing cluster: {e}")
+            logger.exception(f"Error analyzing cluster: {e}")
             return None
 
     def _analyze_keyword_trends(
-        self, posts: List[Dict[str, Any]], time_window_hours: int
-    ) -> List[Dict[str, Any]]:
+        self, posts: list[dict[str, Any]], time_window_hours: int
+    ) -> list[dict[str, Any]]:
         """Analyze keyword and hashtag trends."""
         try:
             # Collect all keywords and hashtags with timestamps
@@ -267,12 +267,12 @@ class TrendDetector:
             return trends
 
         except Exception as e:
-            logger.error(f"Error analyzing keyword trends: {e}")
+            logger.exception(f"Error analyzing keyword trends: {e}")
             return []
 
     def _analyze_term_trend(
-        self, term: str, timestamps: List[datetime], term_type: str
-    ) -> Optional[Dict[str, Any]]:
+        self, term: str, timestamps: list[datetime], term_type: str
+    ) -> dict[str, Any] | None:
         """Analyze trend for a specific term."""
         try:
             timestamps.sort()
@@ -314,12 +314,12 @@ class TrendDetector:
             }
 
         except Exception as e:
-            logger.error(f"Error analyzing term trend for {term}: {e}")
+            logger.exception(f"Error analyzing term trend for {term}: {e}")
             return None
 
     def _analyze_velocity(
-        self, temporal_groups: Dict[str, List[Dict[str, Any]]]
-    ) -> List[Dict[str, Any]]:
+        self, temporal_groups: dict[str, list[dict[str, Any]]]
+    ) -> list[dict[str, Any]]:
         """Analyze velocity patterns to detect sudden spikes."""
         try:
             velocity_trends = []
@@ -341,7 +341,7 @@ class TrendDetector:
             std_velocity = np.std(velocities)
             spike_threshold = mean_velocity + 2 * std_velocity
 
-            for i, (window, velocity) in enumerate(zip(sorted_windows, velocities)):
+            for _i, (window, velocity) in enumerate(zip(sorted_windows, velocities)):
                 if velocity > spike_threshold and velocity >= self.velocity_threshold:
                     # Extract common themes from spike window
                     window_posts = temporal_groups[window]
@@ -376,12 +376,12 @@ class TrendDetector:
             return velocity_trends
 
         except Exception as e:
-            logger.error(f"Error analyzing velocity: {e}")
+            logger.exception(f"Error analyzing velocity: {e}")
             return []
 
     async def _analyze_network_patterns(
-        self, posts: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+        self, posts: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """Analyze network patterns to detect coordinated behavior."""
         try:
             # Build interaction network
@@ -442,10 +442,10 @@ class TrendDetector:
             return network_trends
 
         except Exception as e:
-            logger.error(f"Error analyzing network patterns: {e}")
+            logger.exception(f"Error analyzing network patterns: {e}")
             return []
 
-    def _calculate_coordination_score(self, posts: List[Dict[str, Any]]) -> float:
+    def _calculate_coordination_score(self, posts: list[dict[str, Any]]) -> float:
         """Calculate how coordinated posting behavior is."""
         try:
             timestamps = []
@@ -473,18 +473,17 @@ class TrendDetector:
                 cv = std_diff / mean_diff if mean_diff > 0 else float("inf")
 
                 # Convert coefficient of variation to coordination score (0-1)
-                coordination_score = max(0, 1 - min(cv, 1))
-                return coordination_score
+                return max(0, 1 - min(cv, 1))
 
             return 0.0
 
         except Exception as e:
-            logger.error(f"Error calculating coordination score: {e}")
+            logger.exception(f"Error calculating coordination score: {e}")
             return 0.0
 
     def _combine_trend_signals(
         self, content_clusters, keyword_trends, velocity_trends, network_trends
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Combine different trend signals into unified trends."""
         all_trends = []
 
@@ -500,7 +499,7 @@ class TrendDetector:
 
         return all_trends
 
-    def _calculate_trend_score(self, trend: Dict[str, Any]) -> float:
+    def _calculate_trend_score(self, trend: dict[str, Any]) -> float:
         """Calculate overall trend score."""
         try:
             base_score = 0.0
@@ -537,12 +536,12 @@ class TrendDetector:
             return min(base_score, 100.0)
 
         except Exception as e:
-            logger.error(f"Error calculating trend score: {e}")
+            logger.exception(f"Error calculating trend score: {e}")
             return 0.0
 
     def _filter_and_rank_trends(
-        self, trends: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+        self, trends: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """Filter and rank trends by score."""
         # Filter out low-scoring trends
         filtered_trends = [trend for trend in trends if trend.get("score", 0) >= 20]
@@ -553,7 +552,7 @@ class TrendDetector:
         # Return top trends
         return filtered_trends[:50]
 
-    def _calculate_time_span(self, posts: List[Dict[str, Any]]) -> float:
+    def _calculate_time_span(self, posts: list[dict[str, Any]]) -> float:
         """Calculate time span of posts in hours."""
         try:
             timestamps = []
@@ -570,10 +569,10 @@ class TrendDetector:
             return max(time_span, 0.1)  # Minimum 0.1 hour
 
         except Exception as e:
-            logger.error(f"Error calculating time span: {e}")
+            logger.exception(f"Error calculating time span: {e}")
             return 1.0
 
-    def _find_peak_time(self, timestamps: List[datetime]) -> datetime:
+    def _find_peak_time(self, timestamps: list[datetime]) -> datetime:
         """Find the time with highest posting activity."""
         try:
             # Group by hour and find peak
@@ -584,9 +583,8 @@ class TrendDetector:
 
             if hour_counts:
                 return max(hour_counts.items(), key=lambda x: x[1])[0]
-            else:
-                return timestamps[0] if timestamps else datetime.utcnow()
+            return timestamps[0] if timestamps else datetime.utcnow()
 
         except Exception as e:
-            logger.error(f"Error finding peak time: {e}")
+            logger.exception(f"Error finding peak time: {e}")
             return timestamps[0] if timestamps else datetime.utcnow()

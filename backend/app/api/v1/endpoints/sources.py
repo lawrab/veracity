@@ -2,14 +2,18 @@
 Sources API endpoints.
 """
 
-from typing import List, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_postgres_session
 from app.schemas.source import SourceResponse
 from app.services.source_service import SourceService
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
@@ -18,7 +22,7 @@ router = APIRouter()
 async def get_sources(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    platform: Optional[str] = Query(None),
+    platform: str | None = Query(None),
     verified_only: bool = Query(False),
     db: AsyncSession = Depends(get_postgres_session),
 ):

@@ -5,18 +5,21 @@ Provides REST API for trust score calculations, bot detection,
 and trust score management.
 """
 
+from __future__ import annotations
+
 import logging
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_postgres_session
-from app.schemas.story import StoryResponse
 from app.services.scoring.trust_scorer import TrustScorer
 from app.services.story_service import StoryService
 from app.services.websocket_service import websocket_manager
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +35,7 @@ class TrustScoreRequest(BaseModel):
 class BotDetectionRequest(BaseModel):
     """Request schema for bot detection analysis."""
 
-    posts: List[Dict[str, Any]] = Field(
+    posts: list[dict[str, Any]] = Field(
         ..., description="Social media posts to analyze"
     )
 
@@ -44,10 +47,10 @@ class TrustScoreResponse(BaseModel):
     score_percentage: float = Field(
         ..., ge=0.0, le=100.0, description="Trust score as percentage"
     )
-    signals: Dict[str, Dict[str, Any]] = Field(
+    signals: dict[str, dict[str, Any]] = Field(
         ..., description="Individual trust signals"
     )
-    explanation: List[str] = Field(..., description="Human-readable explanations")
+    explanation: list[str] = Field(..., description="Human-readable explanations")
     calculated_at: str = Field(..., description="Calculation timestamp")
     confidence: float = Field(
         ..., ge=0.0, le=1.0, description="Confidence in the score"
@@ -63,7 +66,7 @@ class BotDetectionResponse(BaseModel):
     coordinated_campaign: bool = Field(
         ..., description="Whether coordinated campaign detected"
     )
-    suspicious_accounts: List[Dict[str, Any]] = Field(
+    suspicious_accounts: list[dict[str, Any]] = Field(
         ..., description="List of suspicious accounts"
     )
     total_accounts_analyzed: int = Field(..., description="Total accounts analyzed")
@@ -127,7 +130,7 @@ async def calculate_trust_score(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error calculating trust score: {e}")
+        logger.exception(f"Error calculating trust score: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -163,7 +166,7 @@ async def detect_bots(request: BotDetectionRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error in bot detection: {e}")
+        logger.exception(f"Error in bot detection: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -209,28 +212,27 @@ async def get_current_trust_score(
             )
 
             return TrustScoreResponse(**score_result)
-        else:
-            # Return current score from database
-            return TrustScoreResponse(
-                score=story.trust_score / 100.0,  # Convert from 0-100 to 0-1
-                score_percentage=story.trust_score,
-                signals={},
-                explanation=[f"Current trust score: {story.trust_score:.1f}%"],
-                calculated_at=story.last_updated_at.isoformat(),
-                confidence=0.8,  # Default confidence for stored scores
-            )
+        # Return current score from database
+        return TrustScoreResponse(
+            score=story.trust_score / 100.0,  # Convert from 0-100 to 0-1
+            score_percentage=story.trust_score,
+            signals={},
+            explanation=[f"Current trust score: {story.trust_score:.1f}%"],
+            calculated_at=story.last_updated_at.isoformat(),
+            confidence=0.8,  # Default confidence for stored scores
+        )
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting trust score: {e}")
+        logger.exception(f"Error getting trust score: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/leaderboard")
 async def get_trust_leaderboard(
     limit: int = Query(10, ge=1, le=100, description="Number of top stories to return"),
-    category: Optional[str] = Query(None, description="Filter by story category"),
+    category: str | None = Query(None, description="Filter by story category"),
     db: AsyncSession = Depends(get_postgres_session),
 ):
     """
@@ -272,14 +274,14 @@ async def get_trust_leaderboard(
         }
 
     except Exception as e:
-        logger.error(f"Error getting trust leaderboard: {e}")
+        logger.exception(f"Error getting trust leaderboard: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
 class BulkCalculateRequest(BaseModel):
     """Request schema for bulk trust score calculation."""
 
-    story_ids: List[str] = Field(
+    story_ids: list[str] = Field(
         ..., max_items=50, description="List of story IDs to process"
     )
 
@@ -341,7 +343,7 @@ async def bulk_calculate_trust_scores(
                 )
 
             except Exception as e:
-                errors.append(f"Error processing story {story_id}: {str(e)}")
+                errors.append(f"Error processing story {story_id}: {e!s}")
 
         logger.info(
             f"Bulk trust score calculation completed: {len(results)} success, {len(errors)} errors"
@@ -357,5 +359,5 @@ async def bulk_calculate_trust_scores(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error in bulk trust score calculation: {e}")
+        logger.exception(f"Error in bulk trust score calculation: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")

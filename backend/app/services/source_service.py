@@ -2,12 +2,12 @@
 Source service for managing source data and credibility tracking.
 """
 
+from __future__ import annotations
+
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import and_, desc, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.core.logging import get_logger
 from app.models.sql_models import CredibilityHistory, Mention, Source
@@ -19,6 +19,9 @@ from app.schemas.source import (
     SourceCreate,
     SourceResponse,
 )
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = get_logger(__name__)
 
@@ -33,9 +36,9 @@ class SourceService:
         self,
         skip: int = 0,
         limit: int = 50,
-        platform: Optional[str] = None,
+        platform: str | None = None,
         verified_only: bool = False,
-    ) -> List[SourceResponse]:
+    ) -> list[SourceResponse]:
         """Get sources with optional filtering."""
 
         query = select(Source)
@@ -45,7 +48,7 @@ class SourceService:
             query = query.where(Source.platform == platform)
 
         if verified_only:
-            query = query.where(Source.verified == True)
+            query = query.where(Source.verified)
 
         # Order by credibility score
         query = query.order_by(desc(Source.credibility_score)).offset(skip).limit(limit)
@@ -55,7 +58,7 @@ class SourceService:
 
         return [SourceResponse.model_validate(source) for source in sources]
 
-    async def get_source_by_id(self, source_id: str) -> Optional[SourceResponse]:
+    async def get_source_by_id(self, source_id: str) -> SourceResponse | None:
         """Get specific source by ID."""
         query = select(Source).where(Source.id == source_id)
         result = await self.db.execute(query)
@@ -87,7 +90,7 @@ class SourceService:
 
     async def get_credibility_history(
         self, source_id: str, days: int = 30
-    ) -> Optional[CredibilityHistoryResponse]:
+    ) -> CredibilityHistoryResponse | None:
         """Get credibility score history for a source."""
 
         # Verify source exists
@@ -223,7 +226,7 @@ class SourceService:
         )
 
     async def update_credibility_score(
-        self, source_id: str, new_score: float, reason: Optional[str] = None
+        self, source_id: str, new_score: float, reason: str | None = None
     ) -> bool:
         """Update source credibility score and record in history."""
 

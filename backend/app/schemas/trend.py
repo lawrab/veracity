@@ -2,46 +2,50 @@
 Trend schema definitions.
 """
 
-from datetime import datetime
-from typing import List, Optional
-from uuid import UUID
+from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from typing import TYPE_CHECKING
+
+from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from datetime import datetime
+    from uuid import UUID
 
 
 class TrendBase(BaseModel):
     """Base trend schema."""
 
-    keywords: List[str]
-    hashtags: Optional[List[str]] = None
-    platforms: List[str]
+    keywords: list[str]
+    hashtags: list[str] | None = None
+    platforms: list[str]
     mention_count: int = 0
     velocity: float = 0.0
-    sentiment_score: Optional[float] = None
+    sentiment_score: float | None = None
 
 
 class TrendCreate(TrendBase):
     """Schema for creating trends."""
 
-    story_id: Optional[UUID] = None
+    story_id: UUID | None = None
 
 
 class TrendUpdate(BaseModel):
     """Schema for updating trends."""
 
-    mention_count: Optional[int] = None
-    velocity: Optional[float] = None
-    sentiment_score: Optional[float] = None
-    peak_at: Optional[datetime] = None
+    mention_count: int | None = None
+    velocity: float | None = None
+    sentiment_score: float | None = None
+    peak_at: datetime | None = None
 
 
 class TrendResponse(TrendBase):
     """Schema for trend responses."""
 
     id: UUID
-    story_id: Optional[UUID] = None
+    story_id: UUID | None = None
     detected_at: datetime
-    peak_at: Optional[datetime] = None
+    peak_at: datetime | None = None
     created_at: datetime
 
     class Config:
@@ -51,10 +55,10 @@ class TrendResponse(TrendBase):
 class TrendEvolution(BaseModel):
     """Schema for trend evolution data."""
 
-    timestamps: List[datetime]
-    mention_counts: List[int]
-    velocity_values: List[float]
-    sentiment_scores: List[Optional[float]]
+    timestamps: list[datetime]
+    mention_counts: list[int]
+    velocity_values: list[float]
+    sentiment_scores: list[float | None]
 
 
 class TrendSource(BaseModel):
@@ -64,4 +68,4 @@ class TrendSource(BaseModel):
     source_count: int
     mention_count: int
     avg_credibility: float
-    top_sources: List[dict]
+    top_sources: list[dict]

@@ -2,9 +2,9 @@
 Application configuration settings.
 """
 
-from typing import List, Optional, Union
+from __future__ import annotations
 
-from pydantic import ConfigDict, Field, field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     # API Configuration
     API_PREFIX: str = "/api/v1"
-    ALLOWED_HOSTS: Union[str, List[str]] = Field(default=["*"], env="ALLOWED_HOSTS")
+    ALLOWED_HOSTS: str | list[str] = Field(default=["*"], env="ALLOWED_HOSTS")
 
     # Database URLs
     POSTGRES_URL: str = Field(env="POSTGRES_URL")
@@ -32,14 +32,10 @@ class Settings(BaseSettings):
     KAFKA_TOPIC_TRENDS: str = "trends"
 
     # External APIs
-    TWITTER_BEARER_TOKEN: Optional[str] = Field(
-        default=None, env="TWITTER_BEARER_TOKEN"
-    )
-    REDDIT_CLIENT_ID: Optional[str] = Field(default=None, env="REDDIT_CLIENT_ID")
-    REDDIT_CLIENT_SECRET: Optional[str] = Field(
-        default=None, env="REDDIT_CLIENT_SECRET"
-    )
-    NEWS_API_KEY: Optional[str] = Field(default=None, env="NEWS_API_KEY")
+    TWITTER_BEARER_TOKEN: str | None = Field(default=None, env="TWITTER_BEARER_TOKEN")
+    REDDIT_CLIENT_ID: str | None = Field(default=None, env="REDDIT_CLIENT_ID")
+    REDDIT_CLIENT_SECRET: str | None = Field(default=None, env="REDDIT_CLIENT_SECRET")
+    NEWS_API_KEY: str | None = Field(default=None, env="NEWS_API_KEY")
 
     # Processing Configuration
     TREND_DETECTION_WINDOW_MINUTES: int = 60
@@ -55,7 +51,7 @@ class Settings(BaseSettings):
     def parse_allowed_hosts(cls, v):
         if isinstance(v, str):
             return [host.strip() for host in v.split(",")]
-        elif isinstance(v, list):
+        if isinstance(v, list):
             return v
         return ["*"]  # fallback
 

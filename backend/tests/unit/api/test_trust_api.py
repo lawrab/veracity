@@ -5,16 +5,14 @@ Tests the REST API functionality for trust score calculations,
 bot detection, and trust score management.
 """
 
-import json
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.schemas.story import StoryResponse
-from app.services.scoring.trust_scorer import TrustScorer
 
 
 class TestTrustAPI:
@@ -323,9 +321,7 @@ class TestTrustLeaderboard:
         mock_story_service_class.return_value = mock_story_service
 
         # Mock database time query
-        mock_story_service.db.get_bind.return_value.execute.return_value.scalar.return_value = (
-            datetime.now()
-        )
+        mock_story_service.db.get_bind.return_value.execute.return_value.scalar.return_value = datetime.now()
 
         response = client.get("/api/v1/trust/leaderboard")
 
@@ -349,9 +345,7 @@ class TestTrustLeaderboard:
         mock_story_service = AsyncMock()
         mock_story_service.get_stories.return_value = sample_stories_list
         mock_story_service_class.return_value = mock_story_service
-        mock_story_service.db.get_bind.return_value.execute.return_value.scalar.return_value = (
-            datetime.now()
-        )
+        mock_story_service.db.get_bind.return_value.execute.return_value.scalar.return_value = datetime.now()
 
         response = client.get("/api/v1/trust/leaderboard?limit=5&category=technology")
 

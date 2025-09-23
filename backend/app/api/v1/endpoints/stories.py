@@ -2,14 +2,18 @@
 Stories API endpoints.
 """
 
-from typing import List, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_postgres_session
-from app.schemas.story import StoryCreate, StoryResponse
+from app.schemas.story import StoryResponse
 from app.services.story_service import StoryService
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
@@ -18,8 +22,8 @@ router = APIRouter()
 async def get_stories(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
-    trust_score_min: Optional[float] = Query(None, ge=0, le=100),
-    category: Optional[str] = Query(None),
+    trust_score_min: float | None = Query(None, ge=0, le=100),
+    category: str | None = Query(None),
     db: AsyncSession = Depends(get_postgres_session),
 ):
     """

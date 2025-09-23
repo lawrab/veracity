@@ -2,17 +2,17 @@
 Twitter data collection service.
 """
 
+from __future__ import annotations
+
 import asyncio
 from datetime import datetime, timezone
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator
 
-import aiohttp
 import tweepy
 
 from app.core.config import settings
 from app.core.database import get_mongodb_db
 from app.core.logging import get_logger
-from app.models.mongo_models import SocialMediaPost
 
 logger = get_logger(__name__)
 
@@ -30,7 +30,8 @@ class TwitterCollector:
     async def initialize(self):
         """Initialize Twitter client and database connection."""
         if not self.bearer_token:
-            raise ValueError("Twitter Bearer Token not configured")
+            msg = "Twitter Bearer Token not configured"
+            raise ValueError(msg)
 
         self.client = tweepy.Client(
             bearer_token=self.bearer_token, wait_on_rate_limit=True
@@ -40,7 +41,7 @@ class TwitterCollector:
 
     async def collect_trending_tweets(
         self, country_code: str = "US", limit: int = 100
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Collect tweets from trending topics."""
         if not self.client:
             await self.initialize()
@@ -83,12 +84,12 @@ class TwitterCollector:
             return collected_tweets
 
         except Exception as e:
-            logger.error(f"Error collecting trending tweets: {e}")
+            logger.exception(f"Error collecting trending tweets: {e}")
             return []
 
     async def collect_keyword_tweets(
-        self, keywords: List[str], limit: int = 100
-    ) -> List[Dict[str, Any]]:
+        self, keywords: list[str], limit: int = 100
+    ) -> list[dict[str, Any]]:
         """Collect tweets for specific keywords."""
         if not self.client:
             await self.initialize()
@@ -121,13 +122,15 @@ class TwitterCollector:
                 await asyncio.sleep(1)  # Rate limiting
 
             except Exception as e:
-                logger.error(f"Error collecting tweets for keyword '{keyword}': {e}")
+                logger.exception(
+                    f"Error collecting tweets for keyword '{keyword}': {e}"
+                )
                 continue
 
         logger.info(f"Collected {len(collected_tweets)} tweets for keywords")
         return collected_tweets
 
-    async def _process_tweet(self, tweet, topic: str) -> Optional[Dict[str, Any]]:
+    async def _process_tweet(self, tweet, topic: str) -> dict[str, Any] | None:
         """Process and normalize tweet data."""
         try:
             # Get user info from includes
@@ -149,7 +152,7 @@ class TwitterCollector:
                     ]
 
             # Create post document
-            post_data = {
+            return {
                 "_id": f"twitter_{tweet.id}",
                 "platform": "twitter",
                 "external_id": str(tweet.id),
@@ -177,13 +180,11 @@ class TwitterCollector:
                 "processed": False,
             }
 
-            return post_data
-
         except Exception as e:
-            logger.error(f"Error processing tweet {tweet.id}: {e}")
+            logger.exception(f"Error processing tweet {tweet.id}: {e}")
             return None
 
-    async def store_tweets(self, tweets: List[Dict[str, Any]]) -> int:
+    async def store_tweets(self, tweets: list[dict[str, Any]]) -> int:
         """Store tweets in MongoDB."""
         if not tweets:
             return 0
@@ -203,14 +204,14 @@ class TwitterCollector:
                 stored_count += 1
 
             except Exception as e:
-                logger.error(f"Error storing tweet {tweet_data['_id']}: {e}")
+                logger.exception(f"Error storing tweet {tweet_data['_id']}: {e}")
 
         logger.info(f"Stored {stored_count} tweets in database")
         return stored_count
 
     async def stream_tweets(
-        self, keywords: List[str]
-    ) -> AsyncGenerator[Dict[str, Any], None]:
+        self, keywords: list[str]
+    ) -> AsyncGenerator[dict[str, Any], None]:
         """Stream tweets in real-time (placeholder for streaming implementation)."""
         # Note: This would require tweepy.StreamingClient for real streaming
         # For now, implement as periodic collection
@@ -220,7 +221,7 @@ class TwitterCollector:
                 yield tweet
             await asyncio.sleep(60)  # Poll every minute
 
-    async def get_rate_limit_status(self) -> Dict[str, Any]:
+    async def get_rate_limit_status(self) -> dict[str, Any]:
         """Get current rate limit status."""
         if not self.client:
             await self.initialize()
@@ -232,5 +233,5 @@ class TwitterCollector:
                 "trends": rate_limits.get("/1.1/trends/place", {}),
             }
         except Exception as e:
-            logger.error(f"Error getting rate limit status: {e}")
+            logger.exception(f"Error getting rate limit status: {e}")
             return {}

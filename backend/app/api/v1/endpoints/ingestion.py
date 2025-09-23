@@ -2,10 +2,11 @@
 Ingestion API endpoints.
 """
 
-from typing import Dict, List
+from __future__ import annotations
+
+from typing import List
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
-from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.database import get_mongodb_db
 from app.core.logging import get_logger
@@ -23,7 +24,7 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 # Track ingestion status
-ingestion_status: Dict[str, CollectorStatus] = {
+ingestion_status: dict[str, CollectorStatus] = {
     "reddit": CollectorStatus.IDLE,
     "twitter": CollectorStatus.IDLE,
     "news": CollectorStatus.IDLE,
@@ -67,7 +68,7 @@ async def ingest_reddit(request: IngestionRequest, background_tasks: BackgroundT
                 return len(all_posts)
 
             except Exception as e:
-                logger.error(f"Reddit ingestion failed: {e}")
+                logger.exception(f"Reddit ingestion failed: {e}")
                 ingestion_status["reddit"] = CollectorStatus.ERROR
                 raise
 
@@ -116,7 +117,7 @@ async def test_ingestion(background_tasks: BackgroundTasks):
                 return len(posts)
 
             except Exception as e:
-                logger.error(f"Test ingestion failed: {e}")
+                logger.exception(f"Test ingestion failed: {e}")
                 ingestion_status["reddit"] = CollectorStatus.ERROR
                 raise
 
@@ -179,5 +180,5 @@ async def get_data_summary():
         return summaries
 
     except Exception as e:
-        logger.error(f"Error getting data summary: {e}")
+        logger.exception(f"Error getting data summary: {e}")
         raise HTTPException(status_code=500, detail=str(e))

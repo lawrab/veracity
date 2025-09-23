@@ -2,11 +2,10 @@
 
 import os
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.core.config import settings
 from app.services.ingestion.reddit_collector import RedditCollector
 
 
@@ -19,7 +18,7 @@ class TestRedditCollectorIntegration:
         """Create Reddit collector with real MongoDB connection."""
         collector = RedditCollector()
         collector.mongodb = mongodb_client
-        yield collector
+        return collector
 
     @pytest.fixture
     def mock_reddit_api(self):

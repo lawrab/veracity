@@ -3,8 +3,6 @@ SQLAlchemy models for PostgreSQL database.
 """
 
 import uuid
-from datetime import datetime
-from typing import List, Optional
 
 from sqlalchemy import (
     JSON,

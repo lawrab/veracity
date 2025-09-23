@@ -29,9 +29,8 @@ jobs:
       - name: Run linters
         working-directory: backend
         run: |
-          black --check app/ tests/
-          isort --check-only app/ tests/
-          flake8 app/ tests/
+          ruff check app/ tests/
+          ruff format --check app/ tests/
       
   check-frontend:
     runs-on: ubuntu-latest

@@ -6,8 +6,7 @@ Tests the core trust scoring algorithms and bot detection functionality.
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
@@ -206,7 +205,7 @@ class TestTrustScorer:
         assert confidence == 4 / 6  # 4 available out of 6 total
 
         # Test with no signals
-        signals = {k: None for k in signals.keys()}
+        signals = dict.fromkeys(signals.keys())
         confidence = trust_scorer._calculate_confidence(signals)
         assert confidence == 0.0
 

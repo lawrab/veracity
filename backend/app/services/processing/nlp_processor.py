@@ -2,17 +2,16 @@
 NLP processing service for text analysis.
 """
 
+from __future__ import annotations
+
 import asyncio
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import spacy
 import torch
 from sentence_transformers import SentenceTransformer
 from transformers import (
-    AutoModel,
-    AutoModelForSequenceClassification,
-    AutoTokenizer,
     pipeline,
 )
 
@@ -65,12 +64,12 @@ class NLPProcessor:
             logger.info(f"NLP models initialized on {self.device}")
 
         except Exception as e:
-            logger.error(f"Failed to initialize NLP models: {e}")
+            logger.exception(f"Failed to initialize NLP models: {e}")
             raise
 
     async def process_text(
-        self, text: str, metadata: Dict[str, Any] = None
-    ) -> Dict[str, Any]:
+        self, text: str, metadata: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Process text through complete NLP pipeline."""
         try:
             # Clean and prepare text
@@ -78,8 +77,6 @@ class NLPProcessor:
 
             if len(cleaned_text.strip()) < 10:  # Skip very short texts
                 return None
-
-            results = {}
 
             # Run all processing tasks concurrently
             sentiment_task = asyncio.create_task(self._analyze_sentiment(cleaned_text))
@@ -90,20 +87,25 @@ class NLPProcessor:
             language_task = asyncio.create_task(self._detect_language(cleaned_text))
 
             # Wait for all tasks to complete
-            sentiment, entities, keywords, embedding, category, language = (
-                await asyncio.gather(
-                    sentiment_task,
-                    entities_task,
-                    keywords_task,
-                    embedding_task,
-                    category_task,
-                    language_task,
-                    return_exceptions=True,
-                )
+            (
+                sentiment,
+                entities,
+                keywords,
+                embedding,
+                category,
+                language,
+            ) = await asyncio.gather(
+                sentiment_task,
+                entities_task,
+                keywords_task,
+                embedding_task,
+                category_task,
+                language_task,
+                return_exceptions=True,
             )
 
             # Compile results
-            results = {
+            return {
                 "sentiment": (
                     sentiment if not isinstance(sentiment, Exception) else None
                 ),
@@ -123,13 +125,11 @@ class NLPProcessor:
                 },
             }
 
-            return results
-
         except Exception as e:
-            logger.error(f"Error processing text: {e}")
+            logger.exception(f"Error processing text: {e}")
             return None
 
-    async def _analyze_sentiment(self, text: str) -> Optional[float]:
+    async def _analyze_sentiment(self, text: str) -> float | None:
         """Analyze sentiment of text."""
         try:
             result = self.sentiment_pipeline(text[:512])  # Truncate for model limits
@@ -140,16 +140,16 @@ class NLPProcessor:
 
             if label == "LABEL_2":  # Positive
                 return score
-            elif label == "LABEL_0":  # Negative
+            if label == "LABEL_0":  # Negative
                 return -score
-            else:  # Neutral (LABEL_1)
-                return 0.0
+            # Neutral (LABEL_1)
+            return 0.0
 
         except Exception as e:
-            logger.error(f"Error in sentiment analysis: {e}")
+            logger.exception(f"Error in sentiment analysis: {e}")
             return None
 
-    async def _extract_entities(self, text: str) -> List[Dict[str, Any]]:
+    async def _extract_entities(self, text: str) -> list[dict[str, Any]]:
         """Extract named entities from text."""
         try:
             doc = self.nlp_model(text[:1000])  # Limit text length
@@ -169,10 +169,10 @@ class NLPProcessor:
             return entities
 
         except Exception as e:
-            logger.error(f"Error in entity extraction: {e}")
+            logger.exception(f"Error in entity extraction: {e}")
             return []
 
-    async def _extract_keywords(self, text: str) -> List[str]:
+    async def _extract_keywords(self, text: str) -> list[str]:
         """Extract keywords from text."""
         try:
             doc = self.nlp_model(text)
@@ -193,20 +193,20 @@ class NLPProcessor:
             return list(set(keywords))[:20]
 
         except Exception as e:
-            logger.error(f"Error in keyword extraction: {e}")
+            logger.exception(f"Error in keyword extraction: {e}")
             return []
 
-    async def _generate_embedding(self, text: str) -> Optional[List[float]]:
+    async def _generate_embedding(self, text: str) -> list[float] | None:
         """Generate embedding vector for text."""
         try:
             embedding = self.embedding_model.encode(text[:512])
             return embedding.tolist()
 
         except Exception as e:
-            logger.error(f"Error generating embedding: {e}")
+            logger.exception(f"Error generating embedding: {e}")
             return None
 
-    async def _classify_content(self, text: str) -> Optional[str]:
+    async def _classify_content(self, text: str) -> str | None:
         """Classify content into categories."""
         try:
             categories = [
@@ -227,7 +227,7 @@ class NLPProcessor:
             return result["labels"][0] if result["scores"][0] > 0.3 else "general"
 
         except Exception as e:
-            logger.error(f"Error in content classification: {e}")
+            logger.exception(f"Error in content classification: {e}")
             return None
 
     async def _detect_language(self, text: str) -> str:
@@ -237,7 +237,7 @@ class NLPProcessor:
             return doc.lang_ if hasattr(doc, "lang_") else "en"
 
         except Exception as e:
-            logger.error(f"Error in language detection: {e}")
+            logger.exception(f"Error in language detection: {e}")
             return "en"
 
     def _clean_text(self, text: str) -> str:
@@ -262,8 +262,8 @@ class NLPProcessor:
         return text.strip()
 
     async def batch_process(
-        self, texts: List[str], batch_size: int = 32
-    ) -> List[Dict[str, Any]]:
+        self, texts: list[str], batch_size: int = 32
+    ) -> list[dict[str, Any]]:
         """Process multiple texts in batches."""
         results = []
 
@@ -283,8 +283,8 @@ class NLPProcessor:
         return results
 
     async def similarity_search(
-        self, query_text: str, candidate_texts: List[str], top_k: int = 10
-    ) -> List[Dict[str, Any]]:
+        self, query_text: str, candidate_texts: list[str], top_k: int = 10
+    ) -> list[dict[str, Any]]:
         """Find most similar texts to query."""
         try:
             # Generate embeddings
@@ -312,5 +312,5 @@ class NLPProcessor:
             return results
 
         except Exception as e:
-            logger.error(f"Error in similarity search: {e}")
+            logger.exception(f"Error in similarity search: {e}")
             return []

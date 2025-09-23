@@ -302,6 +302,18 @@ ignore = [
     "G004",
     # Allow Depends in function defaults (FastAPI pattern)
     "B008",
+    # Allow catching Exception in error handlers
+    "BLE001",
+    # Allow exception chaining patterns common in web APIs
+    "B904",
+    # Allow redundant exception logging (sometimes needed for debugging)
+    "TRY401",
+    # Allow datetime.utcnow() usage
+    "DTZ003",
+    # Allow simple try/except patterns without else blocks
+    "TRY300",
+    # Allow raising HTTPException directly in FastAPI endpoints
+    "TRY301",
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -311,6 +323,9 @@ ignore = [
     "T201",   # Allow print statements in tests
     "S101",   # Allow assert statements in tests
     "PLR2004", # Allow magic values in tests
+    "SLF001",  # Allow private member access in tests
+    "BLE001",  # Allow catching Exception in tests
+    "TRY301",  # Allow abstracting raise to inner functions in tests
 ]
 "app/models/**/*" = [
     "ARG001", # Allow unused arguments in model definitions

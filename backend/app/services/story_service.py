@@ -2,15 +2,15 @@
 Story service for managing story data and operations.
 """
 
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
 
-from sqlalchemy import and_, desc, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from datetime import datetime
+from typing import TYPE_CHECKING, Any
+
+from sqlalchemy import desc, select
 
 from app.core.logging import get_logger
-from app.models.sql_models import Correlation, Story, Trend, TrustSignal
+from app.models.sql_models import Correlation, Story, TrustSignal
 from app.schemas.story import (
     StoryCorrelation,
     StoryCorrelationsResponse,
@@ -18,6 +18,9 @@ from app.schemas.story import (
     StoryResponse,
     TrustScoreHistory,
 )
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = get_logger(__name__)
 
@@ -32,9 +35,9 @@ class StoryService:
         self,
         skip: int = 0,
         limit: int = 10,
-        trust_score_min: Optional[float] = None,
-        category: Optional[str] = None,
-    ) -> List[StoryResponse]:
+        trust_score_min: float | None = None,
+        category: str | None = None,
+    ) -> list[StoryResponse]:
         """Get stories with optional filtering."""
 
         query = select(Story)
@@ -54,7 +57,7 @@ class StoryService:
 
         return [StoryResponse.model_validate(story) for story in stories]
 
-    async def get_story_by_id(self, story_id: str) -> Optional[StoryResponse]:
+    async def get_story_by_id(self, story_id: str) -> StoryResponse | None:
         """Get specific story by ID."""
         query = select(Story).where(Story.id == story_id)
         result = await self.db.execute(query)
@@ -75,9 +78,7 @@ class StoryService:
         logger.info(f"Created new story: {story.id}")
         return StoryResponse.model_validate(story)
 
-    async def get_trust_score_history(
-        self, story_id: str
-    ) -> Optional[TrustScoreHistory]:
+    async def get_trust_score_history(self, story_id: str) -> TrustScoreHistory | None:
         """Get trust score history for a story."""
 
         # Verify story exists
@@ -144,7 +145,7 @@ class StoryService:
 
     async def get_story_correlations(
         self, story_id: str
-    ) -> Optional[StoryCorrelationsResponse]:
+    ) -> StoryCorrelationsResponse | None:
         """Get correlations between social trends and mainstream news."""
 
         # Verify story exists
@@ -202,7 +203,7 @@ class StoryService:
         )
 
     async def update_trust_score(
-        self, story_id: str, new_score: float, signals: List[Dict[str, Any]]
+        self, story_id: str, new_score: float, signals: list[dict[str, Any]]
     ) -> bool:
         """Update story trust score and add trust signals."""
 

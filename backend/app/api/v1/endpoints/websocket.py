@@ -2,8 +2,6 @@
 WebSocket endpoints for real-time updates.
 """
 
-from typing import Dict, Set
-
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.core.logging import get_logger

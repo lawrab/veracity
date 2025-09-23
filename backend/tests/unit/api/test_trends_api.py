@@ -6,8 +6,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.schemas.trend import TrendResponse
-
 
 class TestTrendsAPI:
     """Test cases for trends API endpoints."""

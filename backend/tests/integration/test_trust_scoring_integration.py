@@ -7,14 +7,11 @@ API integration, and real-time WebSocket updates.
 
 import asyncio
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_postgres_session
 from app.models.sql_models import Source, Story, TrustSignal
-from app.schemas.story import StoryCreate, StoryResponse
+from app.schemas.story import StoryResponse
 from app.services.scoring.trust_scorer import TrustScorer
 from app.services.story_service import StoryService
 
@@ -245,7 +242,7 @@ class TestTrustScoringIntegration:
         """Test trust scoring with different story characteristics."""
 
         trust_scorer = TrustScorer()
-        story_service = StoryService(db_session)
+        StoryService(db_session)
 
         # Test scenarios with different characteristics
         test_scenarios = [
@@ -402,13 +399,13 @@ class TestTrustScoringIntegration:
 
             # Verify direction of change matches expectation
             if scenario["expected_increase"]:
-                assert (
-                    updated_score >= initial_score
-                ), f"Score should increase for {scenario['description']}"
+                assert updated_score >= initial_score, (
+                    f"Score should increase for {scenario['description']}"
+                )
             else:
-                assert (
-                    updated_score < initial_score
-                ), f"Score should decrease for {scenario['description']}"
+                assert updated_score < initial_score, (
+                    f"Score should decrease for {scenario['description']}"
+                )
 
     @pytest.mark.asyncio
     async def test_trust_scoring_error_handling(self, db_session):

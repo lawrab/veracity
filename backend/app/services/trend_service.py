@@ -2,16 +2,19 @@
 Trend service for managing trend data and operations.
 """
 
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
 
-from sqlalchemy import and_, func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
+
+from sqlalchemy import and_, func, select
 
 from app.core.logging import get_logger
-from app.models.sql_models import Mention, Source, Story, Trend
+from app.models.sql_models import Mention, Source, Trend
 from app.schemas.trend import TrendCreate, TrendEvolution, TrendResponse, TrendSource
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = get_logger(__name__)
 
@@ -26,9 +29,9 @@ class TrendService:
         self,
         skip: int = 0,
         limit: int = 10,
-        platform: Optional[str] = None,
+        platform: str | None = None,
         time_window: str = "1h",
-    ) -> List[TrendResponse]:
+    ) -> list[TrendResponse]:
         """Get trending topics with optional filtering."""
 
         # Calculate time window
@@ -56,7 +59,7 @@ class TrendService:
 
         return [TrendResponse.model_validate(trend) for trend in trends]
 
-    async def get_trend_by_id(self, trend_id: str) -> Optional[TrendResponse]:
+    async def get_trend_by_id(self, trend_id: str) -> TrendResponse | None:
         """Get specific trend by ID."""
         query = select(Trend).where(Trend.id == trend_id)
         result = await self.db.execute(query)
@@ -77,7 +80,7 @@ class TrendService:
         logger.info(f"Created new trend: {trend.id}")
         return TrendResponse.model_validate(trend)
 
-    async def get_trend_evolution(self, trend_id: str) -> Optional[TrendEvolution]:
+    async def get_trend_evolution(self, trend_id: str) -> TrendEvolution | None:
         """Get trend evolution data over time."""
 
         # Get the trend first
@@ -132,7 +135,7 @@ class TrendService:
             sentiment_scores=sentiment_scores,
         )
 
-    async def get_trend_sources(self, trend_id: str) -> Optional[List[TrendSource]]:
+    async def get_trend_sources(self, trend_id: str) -> list[TrendSource] | None:
         """Get sources contributing to a trend."""
 
         # Verify trend exists

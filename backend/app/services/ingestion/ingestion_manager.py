@@ -2,9 +2,11 @@
 Main ingestion manager coordinating all data collection.
 """
 
+from __future__ import annotations
+
 import asyncio
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.core.database import get_mongodb_db, get_redis_client
 from app.core.logging import get_logger
@@ -41,10 +43,10 @@ class IngestionManager:
 
             logger.info("Ingestion manager initialized successfully")
         except Exception as e:
-            logger.error(f"Failed to initialize ingestion manager: {e}")
+            logger.exception(f"Failed to initialize ingestion manager: {e}")
             raise
 
-    async def start_collection(self, keywords: List[str] = None):
+    async def start_collection(self, keywords: list[str] | None = None):
         """Start the main collection loop."""
         if not keywords:
             keywords = [
@@ -72,7 +74,7 @@ class IngestionManager:
         try:
             await asyncio.gather(*tasks)
         except Exception as e:
-            logger.error(f"Error in collection loop: {e}")
+            logger.exception(f"Error in collection loop: {e}")
             self.running = False
 
     async def stop_collection(self):
@@ -80,7 +82,7 @@ class IngestionManager:
         self.running = False
         logger.info("Stopping data collection...")
 
-    async def _collect_social_media(self, keywords: List[str]):
+    async def _collect_social_media(self, keywords: list[str]):
         """Collect data from social media platforms."""
         while self.running:
             try:
@@ -130,10 +132,10 @@ class IngestionManager:
                 await asyncio.sleep(300)  # 5 minutes
 
             except Exception as e:
-                logger.error(f"Error in social media collection: {e}")
+                logger.exception(f"Error in social media collection: {e}")
                 await asyncio.sleep(60)  # Wait 1 minute on error
 
-    async def _queue_for_processing(self, items: List[Dict[str, Any]], platform: str):
+    async def _queue_for_processing(self, items: list[dict[str, Any]], platform: str):
         """Queue items for NLP processing."""
         if not self.redis:
             return
@@ -153,7 +155,7 @@ class IngestionManager:
                 await self.redis.lpush("nlp_processing_queue", str(queue_item))
 
             except Exception as e:
-                logger.error(f"Error queuing item for processing: {e}")
+                logger.exception(f"Error queuing item for processing: {e}")
 
     async def _process_collected_data(self):
         """Process collected data through NLP pipeline."""
@@ -186,11 +188,11 @@ class IngestionManager:
                         )
 
             except Exception as e:
-                logger.error(f"Error in data processing: {e}")
+                logger.exception(f"Error in data processing: {e}")
                 await asyncio.sleep(5)
 
     async def _update_processed_data(
-        self, item_id: str, processed_data: Dict[str, Any]
+        self, item_id: str, processed_data: dict[str, Any]
     ):
         """Update processed data in MongoDB."""
         try:
@@ -209,7 +211,7 @@ class IngestionManager:
                 },
             )
         except Exception as e:
-            logger.error(f"Error updating processed data for {item_id}: {e}")
+            logger.exception(f"Error updating processed data for {item_id}: {e}")
 
     async def _detect_trends(self):
         """Detect trends from processed data."""
@@ -235,9 +237,9 @@ class IngestionManager:
                     logger.info(f"Detected {len(trends)} trends")
 
             except Exception as e:
-                logger.error(f"Error in trend detection: {e}")
+                logger.exception(f"Error in trend detection: {e}")
 
-    async def _store_trend(self, trend_data: Dict[str, Any]):
+    async def _store_trend(self, trend_data: dict[str, Any]):
         """Store detected trend in database."""
         try:
             # This would integrate with your trend service
@@ -245,7 +247,7 @@ class IngestionManager:
             logger.info(f"New trend detected: {trend_data.get('keywords', [])}")
 
         except Exception as e:
-            logger.error(f"Error storing trend: {e}")
+            logger.exception(f"Error storing trend: {e}")
 
     async def _cleanup_old_data(self):
         """Clean up old data to manage storage."""
@@ -265,9 +267,9 @@ class IngestionManager:
                 logger.info(f"Cleaned up {result.deleted_count} old posts")
 
             except Exception as e:
-                logger.error(f"Error in data cleanup: {e}")
+                logger.exception(f"Error in data cleanup: {e}")
 
-    async def get_collection_stats(self) -> Dict[str, Any]:
+    async def get_collection_stats(self) -> dict[str, Any]:
         """Get statistics about data collection."""
         try:
             collection = self.mongodb.social_media_posts
@@ -299,5 +301,5 @@ class IngestionManager:
             }
 
         except Exception as e:
-            logger.error(f"Error getting collection stats: {e}")
+            logger.exception(f"Error getting collection stats: {e}")
             return {}

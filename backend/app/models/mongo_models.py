@@ -2,8 +2,10 @@
 MongoDB document models for raw social media data.
 """
 
+from __future__ import annotations
+
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 from pymongo import ASCENDING, DESCENDING, TEXT, IndexModel
@@ -16,17 +18,17 @@ class SocialMediaPost(BaseModel):
     platform: str  # twitter, reddit, tiktok, instagram
     external_id: str  # Platform-specific ID
     author_username: str
-    author_display_name: Optional[str] = None
+    author_display_name: str | None = None
     content: str
-    url: Optional[str] = None
+    url: str | None = None
     posted_at: datetime
-    engagement: Dict[str, int] = Field(default_factory=dict)  # likes, shares, comments
-    metadata: Dict[str, Any] = Field(default_factory=dict)  # Platform-specific data
-    hashtags: List[str] = Field(default_factory=list)
-    mentions: List[str] = Field(default_factory=list)
-    media_urls: List[str] = Field(default_factory=list)
+    engagement: dict[str, int] = Field(default_factory=dict)  # likes, shares, comments
+    metadata: dict[str, Any] = Field(default_factory=dict)  # Platform-specific data
+    hashtags: list[str] = Field(default_factory=list)
+    mentions: list[str] = Field(default_factory=list)
+    media_urls: list[str] = Field(default_factory=list)
     language: str = "en"
-    sentiment_score: Optional[float] = None
+    sentiment_score: float | None = None
     processed: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -42,13 +44,13 @@ class NewsArticle(BaseModel):
     content: str
     url: str
     source: str  # news outlet name
-    author: Optional[str] = None
+    author: str | None = None
     published_at: datetime
-    category: Optional[str] = None
-    keywords: List[str] = Field(default_factory=list)
-    entities: List[Dict[str, Any]] = Field(default_factory=list)  # NER results
-    sentiment_score: Optional[float] = None
-    credibility_score: Optional[float] = None
+    category: str | None = None
+    keywords: list[str] = Field(default_factory=list)
+    entities: list[dict[str, Any]] = Field(default_factory=list)  # NER results
+    sentiment_score: float | None = None
+    credibility_score: float | None = None
     processed: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -66,10 +68,10 @@ class ProcessingQueue(BaseModel):
     priority: int = 1  # 1=low, 5=high
     attempts: int = 0
     max_attempts: int = 3
-    error_message: Optional[str] = None
+    error_message: str | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    processing_started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    processing_started_at: datetime | None = None
+    completed_at: datetime | None = None
 
     class Config:
         populate_by_name = True
@@ -81,7 +83,7 @@ class EmbeddingVector(BaseModel):
     id: str = Field(alias="_id")
     content_id: str  # Reference to post or article
     content_type: str  # post, article, story
-    embedding: List[float]
+    embedding: list[float]
     model_name: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

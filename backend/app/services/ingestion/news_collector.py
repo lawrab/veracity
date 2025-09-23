@@ -2,10 +2,12 @@
 News data collector module for RSS feeds and news APIs.
 """
 
+from __future__ import annotations
+
 import asyncio
 import hashlib
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import feedparser
 import httpx
@@ -65,8 +67,8 @@ class NewsCollector:
         logger.info("News collector initialized")
 
     async def collect_rss_feeds(
-        self, feed_urls: Dict[str, str] = None
-    ) -> List[Dict[str, Any]]:
+        self, feed_urls: dict[str, str] | None = None
+    ) -> list[dict[str, Any]]:
         """Collect articles from RSS feeds."""
         if not self.http_client:
             await self.initialize()
@@ -103,7 +105,7 @@ class NewsCollector:
                 await asyncio.sleep(1)
 
             except Exception as e:
-                logger.error(f"Error collecting from {source_name}: {e}")
+                logger.exception(f"Error collecting from {source_name}: {e}")
                 continue
 
         logger.info(
@@ -113,7 +115,7 @@ class NewsCollector:
 
     async def _process_rss_entry(
         self, entry: Any, source_name: str, feed_url: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Process a single RSS feed entry."""
         try:
             # Generate unique ID from URL
@@ -167,7 +169,7 @@ class NewsCollector:
                 )
 
             # Create article document
-            article = {
+            return {
                 "_id": article_id,
                 "platform": "news",
                 "source": source_name,
@@ -192,10 +194,8 @@ class NewsCollector:
                 },
             }
 
-            return article
-
         except Exception as e:
-            logger.error(f"Error processing RSS entry: {e}")
+            logger.exception(f"Error processing RSS entry: {e}")
             return None
 
     def _get_source_credibility(self, source_name: str) -> float:
@@ -233,8 +233,8 @@ class NewsCollector:
         return 0.5  # Default credibility
 
     async def search_news_by_keywords(
-        self, keywords: List[str]
-    ) -> List[Dict[str, Any]]:
+        self, keywords: list[str]
+    ) -> list[dict[str, Any]]:
         """Search for news articles by keywords (requires NewsAPI key)."""
         if not self.news_api_key or self.news_api_key == "your-news-api-key":
             logger.warning("NewsAPI key not configured, skipping keyword search")
@@ -274,13 +274,13 @@ class NewsCollector:
             )
 
         except Exception as e:
-            logger.error(f"Error searching news by keywords: {e}")
+            logger.exception(f"Error searching news by keywords: {e}")
 
         return collected_articles
 
     async def _process_newsapi_article(
-        self, article_data: Dict, keywords: List[str]
-    ) -> Optional[Dict[str, Any]]:
+        self, article_data: dict, keywords: list[str]
+    ) -> dict[str, Any] | None:
         """Process article from NewsAPI response."""
         try:
             url = article_data.get("url", "")
@@ -315,10 +315,10 @@ class NewsCollector:
             }
 
         except Exception as e:
-            logger.error(f"Error processing NewsAPI article: {e}")
+            logger.exception(f"Error processing NewsAPI article: {e}")
             return None
 
-    async def store_articles(self, articles: List[Dict[str, Any]]) -> int:
+    async def store_articles(self, articles: list[dict[str, Any]]) -> int:
         """Store news articles in MongoDB."""
         if not articles:
             return 0
@@ -338,12 +338,12 @@ class NewsCollector:
                 stored_count += 1
 
             except Exception as e:
-                logger.error(f"Error storing article {article['_id']}: {e}")
+                logger.exception(f"Error storing article {article['_id']}: {e}")
 
         logger.info(f"Stored {stored_count} news articles in database")
         return stored_count
 
-    async def get_trending_topics(self) -> List[str]:
+    async def get_trending_topics(self) -> list[str]:
         """Extract trending topics from recent news articles."""
         if self.db is None:
             self.db = get_mongodb_db()
@@ -365,19 +365,17 @@ class NewsCollector:
                 topics.extend(article.get("categories", []))
 
                 # Extract key words from title (simple approach)
-                title = article.get("title", "")
+                article.get("title", "")
                 # You could use NLP here for better topic extraction
 
             # Count frequency and return top topics
             from collections import Counter
 
             topic_counts = Counter(topics)
-            trending = [topic for topic, _ in topic_counts.most_common(10)]
-
-            return trending
+            return [topic for topic, _ in topic_counts.most_common(10)]
 
         except Exception as e:
-            logger.error(f"Error getting trending topics: {e}")
+            logger.exception(f"Error getting trending topics: {e}")
             return []
 
     async def cleanup(self):

@@ -2,16 +2,17 @@
 Reddit data collection service.
 """
 
+from __future__ import annotations
+
 import asyncio
 from datetime import datetime, timezone
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator
 
 import praw
 
 from app.core.config import settings
 from app.core.database import get_mongodb_db
 from app.core.logging import get_logger
-from app.models.mongo_models import SocialMediaPost
 
 logger = get_logger(__name__)
 
@@ -28,7 +29,8 @@ class RedditCollector:
     async def initialize(self):
         """Initialize Reddit client and database connection."""
         if not self.client_id or not self.client_secret:
-            raise ValueError("Reddit API credentials not configured")
+            msg = "Reddit API credentials not configured"
+            raise ValueError(msg)
 
         self.reddit = praw.Reddit(
             client_id=self.client_id,
@@ -40,8 +42,8 @@ class RedditCollector:
         logger.info("Reddit collector initialized")
 
     async def collect_trending_posts(
-        self, subreddits: List[str] = None, limit: int = 100
-    ) -> List[Dict[str, Any]]:
+        self, subreddits: list[str] | None = None, limit: int = 100
+    ) -> list[dict[str, Any]]:
         """Collect trending posts from specified subreddits."""
         if not self.reddit:
             await self.initialize()
@@ -79,15 +81,17 @@ class RedditCollector:
                 await asyncio.sleep(1)  # Rate limiting
 
             except Exception as e:
-                logger.error(f"Error collecting from subreddit '{subreddit_name}': {e}")
+                logger.exception(
+                    f"Error collecting from subreddit '{subreddit_name}': {e}"
+                )
                 continue
 
         logger.info(f"Collected {len(collected_posts)} Reddit posts")
         return collected_posts
 
     async def collect_keyword_posts(
-        self, keywords: List[str], limit: int = 100
-    ) -> List[Dict[str, Any]]:
+        self, keywords: list[str], limit: int = 100
+    ) -> list[dict[str, Any]]:
         """Collect posts containing specific keywords."""
         if not self.reddit:
             await self.initialize()
@@ -109,17 +113,17 @@ class RedditCollector:
                 await asyncio.sleep(1)  # Rate limiting
 
             except Exception as e:
-                logger.error(f"Error searching for keyword '{keyword}': {e}")
+                logger.exception(f"Error searching for keyword '{keyword}': {e}")
                 continue
 
         logger.info(f"Collected {len(collected_posts)} Reddit posts for keywords")
         return collected_posts
 
-    async def _process_post(self, post, context: str) -> Optional[Dict[str, Any]]:
+    async def _process_post(self, post, context: str) -> dict[str, Any] | None:
         """Process and normalize Reddit post data."""
         try:
             # Skip removed/deleted posts
-            if post.selftext == "[deleted]" or post.selftext == "[removed]":
+            if post.selftext in {"[deleted]", "[removed]"}:
                 return None
 
             # Combine title and content
@@ -131,7 +135,7 @@ class RedditCollector:
             post_url = f"https://reddit.com{post.permalink}"
 
             # Create post document
-            post_data = {
+            return {
                 "_id": f"reddit_{post.id}",
                 "platform": "reddit",
                 "external_id": post.id,
@@ -167,13 +171,11 @@ class RedditCollector:
                 "processed": False,
             }
 
-            return post_data
-
         except Exception as e:
-            logger.error(f"Error processing Reddit post {post.id}: {e}")
+            logger.exception(f"Error processing Reddit post {post.id}: {e}")
             return None
 
-    def _extract_hashtags(self, content: str) -> List[str]:
+    def _extract_hashtags(self, content: str) -> list[str]:
         """Extract hashtag-like patterns from content."""
         import re
 
@@ -181,14 +183,14 @@ class RedditCollector:
         subreddit_pattern = r"r/([A-Za-z0-9_]+)"
         return re.findall(subreddit_pattern, content)
 
-    def _extract_mentions(self, content: str) -> List[str]:
+    def _extract_mentions(self, content: str) -> list[str]:
         """Extract user mentions from content."""
         import re
 
         mention_pattern = r"u/([A-Za-z0-9_-]+)"
         return re.findall(mention_pattern, content)
 
-    def _extract_media_urls(self, post) -> List[str]:
+    def _extract_media_urls(self, post) -> list[str]:
         """Extract media URLs from post."""
         urls = []
 
@@ -208,7 +210,7 @@ class RedditCollector:
 
         return urls
 
-    async def store_posts(self, posts: List[Dict[str, Any]]) -> int:
+    async def store_posts(self, posts: list[dict[str, Any]]) -> int:
         """Store Reddit posts in MongoDB."""
         if not posts:
             return 0
@@ -228,14 +230,14 @@ class RedditCollector:
                 stored_count += 1
 
             except Exception as e:
-                logger.error(f"Error storing Reddit post {post_data['_id']}: {e}")
+                logger.exception(f"Error storing Reddit post {post_data['_id']}: {e}")
 
         logger.info(f"Stored {stored_count} Reddit posts in database")
         return stored_count
 
     async def monitor_subreddits(
-        self, subreddits: List[str]
-    ) -> AsyncGenerator[Dict[str, Any], None]:
+        self, subreddits: list[str]
+    ) -> AsyncGenerator[dict[str, Any], None]:
         """Monitor subreddits for new posts."""
         if not self.reddit:
             await self.initialize()
@@ -256,15 +258,17 @@ class RedditCollector:
                                 yield post_data
 
                 except Exception as e:
-                    logger.error(f"Error monitoring subreddit '{subreddit_name}': {e}")
+                    logger.exception(
+                        f"Error monitoring subreddit '{subreddit_name}': {e}"
+                    )
 
                 await asyncio.sleep(2)  # Rate limiting
 
             await asyncio.sleep(30)  # Check every 30 seconds
 
     async def get_subreddit_info(
-        self, subreddit_names: List[str]
-    ) -> Dict[str, Dict[str, Any]]:
+        self, subreddit_names: list[str]
+    ) -> dict[str, dict[str, Any]]:
         """Get information about subreddits."""
         if not self.reddit:
             await self.initialize()
@@ -285,7 +289,7 @@ class RedditCollector:
                     "lang": subreddit.lang,
                 }
             except Exception as e:
-                logger.error(
+                logger.exception(
                     f"Error getting info for subreddit '{subreddit_name}': {e}"
                 )
                 subreddit_info[subreddit_name] = None
