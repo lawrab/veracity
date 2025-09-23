@@ -68,7 +68,7 @@ class NLPProcessor:
             raise
 
     async def process_text(
-        self, text: str, metadata: dict[str, Any] | None = None
+        self, text: str, _metadata: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """Process text through complete NLP pipeline."""
         try:
@@ -154,19 +154,16 @@ class NLPProcessor:
         try:
             doc = self.nlp_model(text[:1000])  # Limit text length
 
-            entities = []
-            for ent in doc.ents:
-                entities.append(
-                    {
-                        "text": ent.text,
-                        "label": ent.label_,
-                        "start": ent.start_char,
-                        "end": ent.end_char,
-                        "confidence": float(ent._.get("confidence", 0.5)),
-                    }
-                )
-
-            return entities
+            return [
+                {
+                    "text": ent.text,
+                    "label": ent.label_,
+                    "start": ent.start_char,
+                    "end": ent.end_char,
+                    "confidence": float(ent._.get("confidence", 0.5)),
+                }
+                for ent in doc.ents
+            ]
 
         except Exception as e:
             logger.exception(f"Error in entity extraction: {e}")
@@ -178,16 +175,17 @@ class NLPProcessor:
             doc = self.nlp_model(text)
 
             # Extract meaningful tokens (nouns, proper nouns, adjectives)
-            keywords = []
-            for token in doc:
+            keywords = [
+                token.lemma_.lower()
+                for token in doc
                 if (
                     token.pos_ in ["NOUN", "PROPN", "ADJ"]
                     and not token.is_stop
                     and not token.is_punct
                     and len(token.text) > 2
                     and token.is_alpha
-                ):
-                    keywords.append(token.lemma_.lower())
+                )
+            ]
 
             # Remove duplicates and return top keywords
             return list(set(keywords))[:20]

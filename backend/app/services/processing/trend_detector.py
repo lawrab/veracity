@@ -223,7 +223,7 @@ class TrendDetector:
             return None
 
     def _analyze_keyword_trends(
-        self, posts: list[dict[str, Any]], time_window_hours: int
+        self, posts: list[dict[str, Any]], _time_window_hours: int
     ) -> list[dict[str, Any]]:
         """Analyze keyword and hashtag trends."""
         try:

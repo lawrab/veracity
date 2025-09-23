@@ -40,7 +40,7 @@ class TwitterCollector:
         logger.info("Twitter collector initialized")
 
     async def collect_trending_tweets(
-        self, country_code: str = "US", limit: int = 100
+        self, _country_code: str = "US", limit: int = 100
     ) -> list[dict[str, Any]]:
         """Collect tweets from trending topics."""
         if not self.client:

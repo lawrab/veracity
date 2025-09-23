@@ -249,12 +249,30 @@ class TrustScorer:
         value_percentage = round(value * 100, 1)
 
         explanations = {
-            "source_credibility": f"Source credibility: {value_percentage}% - Based on historical accuracy of sources",
-            "velocity_pattern": f"Velocity pattern: {value_percentage}% - Analysis of spread pattern authenticity",
-            "cross_platform_correlation": f"Cross-platform correlation: {value_percentage}% - Consistency across social platforms",
-            "engagement_authenticity": f"Engagement authenticity: {value_percentage}% - Bot detection and genuine interaction analysis",
-            "temporal_consistency": f"Temporal consistency: {value_percentage}% - Story stability over time",
-            "content_quality": f"Content quality: {value_percentage}% - Completeness and attribution assessment",
+            "source_credibility": (
+                f"Source credibility: {value_percentage}% - "
+                "Based on historical accuracy of sources"
+            ),
+            "velocity_pattern": (
+                f"Velocity pattern: {value_percentage}% - "
+                "Analysis of spread pattern authenticity"
+            ),
+            "cross_platform_correlation": (
+                f"Cross-platform correlation: {value_percentage}% - "
+                "Consistency across social platforms"
+            ),
+            "engagement_authenticity": (
+                f"Engagement authenticity: {value_percentage}% - "
+                "Bot detection and genuine interaction analysis"
+            ),
+            "temporal_consistency": (
+                f"Temporal consistency: {value_percentage}% - "
+                "Story stability over time"
+            ),
+            "content_quality": (
+                f"Content quality: {value_percentage}% - "
+                "Completeness and attribution assessment"
+            ),
         }
 
         return explanations.get(signal_type, f"{signal_type}: {value_percentage}%")

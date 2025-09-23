@@ -122,7 +122,9 @@ async def calculate_trust_score(
         )
 
         logger.info(
-            f"Calculated trust score for story {request.story_id}: {score_result['score_percentage']:.1f}%"
+            "Calculated trust score for story %s: %.1f%%",
+            request.story_id,
+            score_result["score_percentage"],
         )
 
         return TrustScoreResponse(**score_result)

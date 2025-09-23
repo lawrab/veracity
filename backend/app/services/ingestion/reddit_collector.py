@@ -202,10 +202,10 @@ class RedditCollector:
         if hasattr(post, "preview") and post.preview:
             try:
                 images = post.preview.get("images", [])
-                for image in images:
-                    if "source" in image:
-                        urls.append(image["source"]["url"])
-            except:
+                urls.extend(
+                    image["source"]["url"] for image in images if "source" in image
+                )
+            except Exception:
                 pass
 
         return urls

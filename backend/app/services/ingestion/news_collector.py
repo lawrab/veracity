@@ -97,9 +97,8 @@ class NewsCollector:
                     if article:
                         collected_articles.append(article)
 
-                logger.info(
-                    f"Collected {len([a for a in collected_articles if a['source'] == source_name])} articles from {source_name}"
-                )
+                article_count = len([a for a in collected_articles if a["source"] == source_name])
+                logger.info("Collected %d articles from %s", article_count, source_name)
 
                 # Rate limiting
                 await asyncio.sleep(1)

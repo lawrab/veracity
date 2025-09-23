@@ -314,6 +314,8 @@ ignore = [
     "TRY300",
     # Allow raising HTTPException directly in FastAPI endpoints
     "TRY301",
+    # Allow try-except in loops for robust data processing
+    "PERF203",
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -329,6 +331,12 @@ ignore = [
 ]
 "app/models/**/*" = [
     "ARG001", # Allow unused arguments in model definitions
+]
+"app/services/ingestion/**/*" = [
+    "PLC0415", # Allow imports inside functions for optional dependencies
+]
+"app/services/processing/**/*" = [
+    "PLC0415", # Allow imports inside functions for optional ML dependencies
 ]
 
 [tool.ruff.lint.mccabe]
