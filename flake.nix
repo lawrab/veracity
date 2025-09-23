@@ -40,6 +40,9 @@
             python.pkgs.pip
             python.pkgs.virtualenv
             
+            # Modern Python development tools
+            ruff  # All-in-one linter and formatter
+            
             # Node.js and package managers
             nodeEnv
             yarn
@@ -94,7 +97,7 @@
             echo ""
             echo "Quick start:"
             echo "  1. Copy .env.example to .env and configure"
-            echo "  2. Setup Python: cd backend && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt"
+            echo "  2. Setup Python: cd backend && python -m venv .venv && source .venv/bin/activate && pip install -e '.[dev,test]'"
             echo "  3. Setup Frontend: cd frontend && npm install"
             echo "  4. Start infrastructure: podman-compose up -d"
             echo "  5. Start backend: cd backend && source .venv/bin/activate && python -m app.main"
@@ -133,7 +136,7 @@
             
             be-dev() { cd backend && source .venv/bin/activate && python -m app.main; }
             be-test() { cd backend && source .venv/bin/activate && python -m pytest "$@"; }
-            be-lint() { cd backend && source .venv/bin/activate && black . && isort . && flake8 .; }
+            be-lint() { cd backend && ruff check --fix . && ruff format . && echo "✅ Code quality checks passed!"; }
             
             fe-dev() { cd frontend && npm run dev; }
             fe-build() { cd frontend && npm run build; }
@@ -201,15 +204,11 @@
         # Development checks
         checks = {
           backend-lint = pkgs.runCommand "backend-lint" {
-            buildInputs = [ python ];
+            buildInputs = [ python pkgs.ruff ];
           } ''
             cd ${self}/backend
-            ${python}/bin/python -m venv .venv
-            source .venv/bin/activate
-            pip install -r requirements.txt
-            python -m black --check .
-            python -m isort --check-only .
-            python -m flake8 .
+            ${pkgs.ruff}/bin/ruff check .
+            ${pkgs.ruff}/bin/ruff format --check .
             touch $out
           '';
           
@@ -219,7 +218,7 @@
             cd ${self}/backend
             ${python}/bin/python -m venv .venv
             source .venv/bin/activate
-            pip install -r requirements.txt
+            pip install -e '.[dev,test]'
             python -m pytest tests/
             touch $out
           '';

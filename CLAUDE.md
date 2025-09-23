@@ -119,10 +119,14 @@ python -m app.main
 # Run tests
 pytest tests/
 
-# Code formatting and linting
-black .
-isort .
-flake8 .
+# Code formatting and linting (using ruff - replaces black, isort, flake8)
+ruff check .                    # Lint code
+ruff check . --fix              # Fix auto-fixable issues
+ruff format .                   # Format code
+ruff format . --check           # Check formatting without changes
+
+# Type checking
+mypy .
 ```
 
 ### Frontend Development  

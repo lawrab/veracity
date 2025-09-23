@@ -83,11 +83,9 @@ dependencies = [
 [project.optional-dependencies]
 # Development dependencies
 dev = [
-    "black>=23.0.0",
-    "isort>=5.12.0",
-    "flake8>=6.0.0",
     "mypy>=1.0.0",
     "pre-commit>=3.0.0",
+    "ruff>=0.1.0",  # Modern all-in-one linter/formatter (replaces black, isort, flake8, autoflake, pyupgrade)
 ]
 
 # Testing dependencies
@@ -127,64 +125,8 @@ where = ["."]
 include = ["app*"]
 exclude = ["tests*"]
 
-[tool.black]
-line-length = 88
-target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-    # Directories
-    \.eggs
-    | \.git
-    | \.hg
-    | \.mypy_cache
-    | \.nox
-    | \.tox
-    | \.venv
-    | venv
-    | \.svn
-    | _build
-    | buck-out
-    | build
-    | dist
-    | __pycache__
-)/
-'''
 
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
-line_length = 88
-known_first_party = ["app"]
-known_third_party = ["fastapi", "pydantic", "sqlalchemy", "alembic"]
-sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 
-[tool.flake8]
-max-line-length = 88
-extend-ignore = [
-    "E203",  # Whitespace before ':' (conflicts with black)
-    "W503",  # Line break before binary operator (conflicts with black)
-    "W504",  # Line break after binary operator (conflicts with black)
-]
-exclude = [
-    ".git",
-    "__pycache__",
-    ".venv",
-    "venv",
-    "build",
-    "dist",
-    "*.egg-info",
-    ".mypy_cache",
-    ".pytest_cache",
-]
-per-file-ignores = [
-    "__init__.py:F401",  # Unused imports in __init__ files
-    "tests/*:S101",      # Use of assert in tests
-]
 
 [tool.mypy]
 python_version = "3.8"
@@ -282,3 +224,113 @@ precision = 2
 
 [tool.coverage.html]
 directory = "htmlcov"
+
+
+
+[tool.ruff]
+target-version = "py38" 
+line-length = 88
+
+[tool.ruff.lint]
+# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings  
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+    "S",   # flake8-bandit
+    "BLE", # flake8-blind-except
+    "A",   # flake8-builtins
+    "COM", # flake8-commas
+    "DTZ", # flake8-datetimez
+    "EM",  # flake8-errmsg
+    "FA",  # flake8-future-annotations
+    "ISC", # flake8-implicit-str-concat
+    "ICN", # flake8-import-conventions
+    "G",   # flake8-logging-format
+    "INP", # flake8-no-pep420
+    "PIE", # flake8-pie
+    "T20", # flake8-print
+    "PT",  # flake8-pytest-style
+    "Q",   # flake8-quotes
+    "RSE", # flake8-raise
+    "RET", # flake8-return
+    "SLF", # flake8-self
+    "SIM", # flake8-simplify
+    "TID", # flake8-tidy-imports
+    "TCH", # flake8-type-checking
+    "ARG", # flake8-unused-arguments
+    "PTH", # flake8-use-pathlib
+    "ERA", # eradicate
+    "PGH", # pygrep-hooks
+    "PL",  # Pylint
+    "TRY", # tryceratops
+    "PERF", # Perflint
+    "RUF", # Ruff-specific rules
+]
+
+ignore = [
+    # Allow non-abstract empty methods in abstract base classes
+    "B027",
+    # Ignore checks for possible passwords
+    "S105", "S106", "S107",
+    # Ignore complexity
+    "C901",
+    # Allow print statements (useful for debugging)
+    "T201",
+    # Allow assert statements
+    "S101",
+    # Allow magic values
+    "PLR2004",
+    # Allow try-except-pass
+    "S110",
+    # Allow hardcoded bind all interfaces
+    "S104",
+    # Allow subprocess without shell=True
+    "S603",
+    # Allow long messages in exceptions
+    "TRY003",
+    # Allow mutable class attributes
+    "RUF012",
+    # Conflicts with formatter
+    "COM812", "COM819",
+    # Allow f-strings in logging (common FastAPI pattern)
+    "G004",
+    # Allow Depends in function defaults (FastAPI pattern)
+    "B008",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]
+"tests/**/*" = [
+    "TID252",  # Allow relative imports in tests
+    "T201",   # Allow print statements in tests
+    "S101",   # Allow assert statements in tests
+    "PLR2004", # Allow magic values in tests
+]
+"app/models/**/*" = [
+    "ARG001", # Allow unused arguments in model definitions
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+known-third-party = ["fastapi", "pydantic", "sqlalchemy", "alembic"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.flake8-type-checking]
+strict = false
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

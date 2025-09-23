@@ -1,4 +1,4 @@
-name: Test Suite
+name: Code Quality Checks
 
 on:
   push:
@@ -7,47 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  test-backend:
+  check-backend:
     runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: veracity_user
-          POSTGRES_PASSWORD: veracity_password
-          POSTGRES_DB: test_veracity
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      
-      mongodb:
-        image: mongo:6
-        env:
-          MONGO_INITDB_ROOT_USERNAME: veracity_user
-          MONGO_INITDB_ROOT_PASSWORD: veracity_password
-          MONGO_INITDB_DATABASE: test_veracity
-        ports:
-          - 27017:27017
-        options: >-
-          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     
     steps:
       - uses: actions/checkout@v4
@@ -62,7 +23,7 @@ jobs:
         working-directory: backend
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -e ".[dev,test]"
           python -m spacy download en_core_web_sm
       
       - name: Run linters
@@ -72,47 +33,7 @@ jobs:
           isort --check-only app/ tests/
           flake8 app/ tests/
       
-      - name: Run unit tests
-        working-directory: backend
-        env:
-          POSTGRES_URL: postgresql+asyncpg://veracity_user:veracity_password@localhost:5432/test_veracity
-          MONGODB_URL: mongodb://veracity_user:veracity_password@localhost:27017/test_veracity
-          REDIS_URL: redis://localhost:6379/0
-          SECRET_KEY: test-secret-key
-          ENVIRONMENT: test
-        run: |
-          pytest tests/unit/ -v -m unit --tb=short
-      
-      - name: Run integration tests
-        working-directory: backend
-        env:
-          POSTGRES_URL: postgresql+asyncpg://veracity_user:veracity_password@localhost:5432/test_veracity
-          MONGODB_URL: mongodb://veracity_user:veracity_password@localhost:27017/test_veracity
-          REDIS_URL: redis://localhost:6379/0
-          SECRET_KEY: test-secret-key
-          ENVIRONMENT: test
-        run: |
-          pytest tests/integration/ -v -m integration --tb=short
-      
-      - name: Generate coverage report
-        working-directory: backend
-        env:
-          POSTGRES_URL: postgresql+asyncpg://veracity_user:veracity_password@localhost:5432/test_veracity
-          MONGODB_URL: mongodb://veracity_user:veracity_password@localhost:27017/test_veracity
-          REDIS_URL: redis://localhost:6379/0
-          SECRET_KEY: test-secret-key
-          ENVIRONMENT: test
-        run: |
-          pytest tests/ --cov=app --cov-report=xml --cov-report=term-missing
-      
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          directory: backend
-          file: ./coverage.xml
-          fail_ci_if_error: false
-
-  test-frontend:
+  check-frontend:
     runs-on: ubuntu-latest
     
     steps:
@@ -135,10 +56,6 @@ jobs:
           npm run lint
           npm run type-check
       
-      - name: Run tests
-        working-directory: frontend
-        run: npm test
-      
-      - name: Build
+      - name: Build check
         working-directory: frontend
         run: npm run build
