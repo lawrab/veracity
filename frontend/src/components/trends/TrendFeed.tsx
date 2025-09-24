@@ -24,11 +24,12 @@ export default function TrendFeed() {
   const fetchTrends = async () => {
     try {
       const response = await apiService.get('/trends/live');
-      setTrends(response.data.slice(0, 10)); // Show top 10 trends
+      setTrends((response || []).slice(0, 10)); // Show top 10 trends
       setError(null);
     } catch (err) {
       setError('Failed to fetch trends');
       console.error('Error fetching trends:', err);
+      setTrends([]); // Reset to empty array on error
     } finally {
       setLoading(false);
     }

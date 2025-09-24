@@ -22,17 +22,18 @@ export default function StoryList() {
     try {
       setLoading(true);
       const response = await apiService.get('/stories/trending');
-      setStories(response.data);
+      setStories(response || []);
       setError(null);
     } catch (err) {
       setError('Failed to fetch stories');
       console.error('Error fetching stories:', err);
+      setStories([]); // Reset to empty array on error
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredStories = stories
+  const filteredStories = (stories || [])
     .filter(story => {
       const matchesSearch = story.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           story.description?.toLowerCase().includes(searchQuery.toLowerCase());

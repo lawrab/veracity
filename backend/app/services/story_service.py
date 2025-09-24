@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
 from sqlalchemy import desc, select
 
@@ -57,7 +58,20 @@ class StoryService:
 
         return [StoryResponse.model_validate(story) for story in stories]
 
-    async def get_story_by_id(self, story_id: str) -> StoryResponse | None:
+    async def get_trending_stories(
+        self, limit: int = 20
+    ) -> list[StoryResponse]:
+        """Get trending stories ordered by velocity and trust score."""
+        query = (
+            select(Story)
+            .order_by(desc(Story.velocity), desc(Story.trust_score))
+            .limit(limit)
+        )
+        result = await self.db.execute(query)
+        stories = result.scalars().all()
+        return [StoryResponse.model_validate(story) for story in stories]
+
+    async def get_story_by_id(self, story_id: UUID) -> StoryResponse | None:
         """Get specific story by ID."""
         query = select(Story).where(Story.id == story_id)
         result = await self.db.execute(query)
@@ -78,7 +92,7 @@ class StoryService:
         logger.info(f"Created new story: {story.id}")
         return StoryResponse.model_validate(story)
 
-    async def get_trust_score_history(self, story_id: str) -> TrustScoreHistory | None:
+    async def get_trust_score_history(self, story_id: UUID) -> TrustScoreHistory | None:
         """Get trust score history for a story."""
 
         # Verify story exists
@@ -144,7 +158,7 @@ class StoryService:
         return TrustScoreHistory(timestamps=timestamps, scores=scores, signals=signals)
 
     async def get_story_correlations(
-        self, story_id: str
+        self, story_id: UUID
     ) -> StoryCorrelationsResponse | None:
         """Get correlations between social trends and mainstream news."""
 
@@ -203,7 +217,7 @@ class StoryService:
         )
 
     async def update_trust_score(
-        self, story_id: str, new_score: float, signals: list[dict[str, Any]]
+        self, story_id: UUID, new_score: float, signals: list[dict[str, Any]]
     ) -> bool:
         """Update story trust score and add trust signals."""
 

@@ -4,7 +4,8 @@ Stories API endpoints.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 router = APIRouter()
 
 
-@router.get("/", response_model=List[StoryResponse])
+@router.get("/", response_model=list[StoryResponse])
 async def get_stories(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
@@ -39,10 +40,23 @@ async def get_stories(
         skip=skip, limit=limit, trust_score_min=trust_score_min, category=category
     )
 
+@router.get("/trending", response_model=list[StoryResponse])
+async def get_trending_stories(
+    limit: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_postgres_session),
+):
+    """
+    Get trending stories ordered by velocity and trust score.
+    
+    - **limit**: Maximum number of trending stories to return
+    """
+    story_service = StoryService(db)
+    return await story_service.get_trending_stories(limit=limit)
+
 
 @router.get("/{story_id}", response_model=StoryResponse)
 async def get_story(
-    story_id: str,
+    story_id: UUID,
     db: AsyncSession = Depends(get_postgres_session),
 ):
     """Get specific story by ID."""
@@ -55,7 +69,7 @@ async def get_story(
 
 @router.get("/{story_id}/trust-history")
 async def get_story_trust_history(
-    story_id: str,
+    story_id: UUID,
     db: AsyncSession = Depends(get_postgres_session),
 ):
     """Get trust score history for a story."""
@@ -68,7 +82,7 @@ async def get_story_trust_history(
 
 @router.get("/{story_id}/correlations")
 async def get_story_correlations(
-    story_id: str,
+    story_id: UUID,
     db: AsyncSession = Depends(get_postgres_session),
 ):
     """Get correlations between social trends and mainstream news."""
