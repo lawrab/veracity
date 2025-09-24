@@ -1,4 +1,5 @@
 """Basic test to verify testing infrastructure."""
+
 import pytest
 
 
@@ -19,5 +20,6 @@ def test_string_operations():
 async def test_async_function():
     """Test async function support."""
     import asyncio
+
     await asyncio.sleep(0.1)
     assert True

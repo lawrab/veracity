@@ -1,0 +1,372 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "veracity-backend"
+version = "0.1.0"
+description = "Comprehensive social media trend and news trustability platform backend"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Veracity Team"}
+]
+keywords = ["social-media", "nlp", "trust-scoring", "news-analysis", "trends"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+]
+
+# Core dependencies
+dependencies = [
+    # Core Framework
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.20.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    
+    # Database Drivers
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.13.0",
+    "asyncpg>=0.29.0",
+    "psycopg2-binary>=2.9.0",
+    "motor>=3.3.0",
+    "redis>=5.0.0",
+    "elasticsearch>=8.0.0",
+    "aiohttp>=3.8.0",
+    
+    # HTTP Client
+    "httpx>=0.25.0",
+    
+    # Social Media APIs
+    "praw>=7.7.0",  # Reddit API
+    "tweepy>=4.14.0",  # Twitter API
+    
+    # Authentication & Security
+    "PyJWT>=2.10.1",
+    "cryptography>=46.0.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-multipart>=0.0.6",
+    
+    # NLP & Machine Learning
+    "spacy>=3.7.0",
+    "transformers>=4.35.0",
+    "scikit-learn>=1.3.0",
+    "numpy>=1.24.0",
+    "pandas>=2.1.0",
+    "torch>=2.0.0",
+    "sentence-transformers>=2.2.0",
+    
+    # News & Content Processing
+    "newspaper3k>=0.2.8",
+    "feedparser>=6.0.10",  # RSS feed parsing
+    "beautifulsoup4>=4.12.0",
+    "lxml>=4.9.0",
+    
+    # Utilities
+    "python-dotenv>=1.0.0",
+    "structlog>=23.0.0",
+]
+
+# Optional dependency groups
+[project.optional-dependencies]
+# Development dependencies
+dev = [
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+    "ruff>=0.1.0",  # Modern all-in-one linter/formatter (replaces black, isort, flake8, autoflake, pyupgrade)
+]
+
+# Testing dependencies
+test = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.11.0",
+    "pytest-env>=1.0.0",
+    "faker>=20.0.0",
+]
+
+# Production extras
+monitoring = [
+    "prometheus-client>=0.18.0",
+    "sentry-sdk>=1.30.0",
+]
+
+# All dependencies for convenience
+all = [
+    "veracity-backend[dev,test,monitoring]"
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/veracity"
+Repository = "https://github.com/your-org/veracity.git"
+Documentation = "https://veracity.readthedocs.io"
+Changelog = "https://github.com/your-org/veracity/blob/main/CHANGELOG.md"
+
+[project.scripts]
+veracity-server = "app.main:start_server"
+
+# Tool configurations
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+exclude = ["tests*"]
+
+
+
+
+[tool.mypy]
+python_version = "3.8"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+implicit_reexport = false
+strict_equality = true
+exclude = [
+    "tests/",
+    ".venv/",
+    "venv/",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "spacy.*",
+    "transformers.*",
+    "sentence_transformers.*",
+    "newspaper.*",
+    "praw.*",
+    "tweepy.*",
+    "motor.*",
+    "elasticsearch.*",
+    "feedparser.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = [
+    "-ra",
+    "-v",
+    "--strict-markers",
+    "--strict-config",
+    "--cov=app",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-report=json:coverage.json",
+    "--cov-fail-under=80",
+]
+markers = [
+    "unit: Unit tests that don't require external dependencies",
+    "integration: Integration tests requiring database or external services",
+    "e2e: End-to-end tests that test complete workflows",
+    "slow: Tests that take a long time to run",
+    "requires_api: Tests that require external API credentials",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+    "ignore::UserWarning:spacy.*",
+    "ignore::FutureWarning:transformers.*",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+show_missing = true
+precision = 2
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+
+
+[tool.ruff]
+target-version = "py38" 
+line-length = 88
+
+[tool.ruff.lint]
+# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings  
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+    "S",   # flake8-bandit
+    "BLE", # flake8-blind-except
+    "A",   # flake8-builtins
+    "COM", # flake8-commas
+    "DTZ", # flake8-datetimez
+    "EM",  # flake8-errmsg
+    "FA",  # flake8-future-annotations
+    "ISC", # flake8-implicit-str-concat
+    "ICN", # flake8-import-conventions
+    "G",   # flake8-logging-format
+    "INP", # flake8-no-pep420
+    "PIE", # flake8-pie
+    "T20", # flake8-print
+    "PT",  # flake8-pytest-style
+    "Q",   # flake8-quotes
+    "RSE", # flake8-raise
+    "RET", # flake8-return
+    "SLF", # flake8-self
+    "SIM", # flake8-simplify
+    "TID", # flake8-tidy-imports
+    "TCH", # flake8-type-checking
+    "ARG", # flake8-unused-arguments
+    "PTH", # flake8-use-pathlib
+    "ERA", # eradicate
+    "PGH", # pygrep-hooks
+    "PL",  # Pylint
+    "TRY", # tryceratops
+    "PERF", # Perflint
+    "RUF", # Ruff-specific rules
+]
+
+ignore = [
+    # Allow non-abstract empty methods in abstract base classes
+    "B027",
+    # Ignore checks for possible passwords
+    "S105", "S106", "S107",
+    # Ignore complexity
+    "C901",
+    # Allow print statements (useful for debugging)
+    "T201",
+    # Allow assert statements
+    "S101",
+    # Allow magic values
+    "PLR2004",
+    # Allow try-except-pass
+    "S110",
+    # Allow hardcoded bind all interfaces
+    "S104",
+    # Allow subprocess without shell=True
+    "S603",
+    # Allow long messages in exceptions
+    "TRY003",
+    # Allow mutable class attributes
+    "RUF012",
+    # Conflicts with formatter
+    "COM812", "COM819",
+    # Allow f-strings in logging (common FastAPI pattern)
+    "G004",
+    # Allow Depends in function defaults (FastAPI pattern)
+    "B008",
+    # Allow catching Exception in error handlers
+    "BLE001",
+    # Allow exception chaining patterns common in web APIs
+    "B904",
+    # Allow redundant exception logging (sometimes needed for debugging)
+    "TRY401",
+    # Allow datetime.utcnow() usage
+    "DTZ003",
+    # Allow simple try/except patterns without else blocks
+    "TRY300",
+    # Allow raising HTTPException directly in FastAPI endpoints
+    "TRY301",
+    # Allow try-except in loops for robust data processing
+    "PERF203",
+    # Allow comments that look like code
+    "ERA001",
+    # Allow complex functions (sometimes needed for comprehensive logic)
+    "PLR0912", "PLR0913",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]
+"tests/**/*" = [
+    "TID252",  # Allow relative imports in tests
+    "T201",   # Allow print statements in tests
+    "S101",   # Allow assert statements in tests
+    "PLR2004", # Allow magic values in tests
+    "SLF001",  # Allow private member access in tests
+    "BLE001",  # Allow catching Exception in tests
+    "TRY301",  # Allow abstracting raise to inner functions in tests
+    "PLC0415", # Allow imports inside functions in tests
+    "ARG002",  # Allow unused method arguments in test fixtures
+    "E501",    # Allow long lines in test descriptions
+]
+"app/models/**/*" = [
+    "ARG001", # Allow unused arguments in model definitions
+]
+"app/services/ingestion/**/*" = [
+    "PLC0415", # Allow imports inside functions for optional dependencies
+    "S324", # MD5 used for ID generation, not security
+    "S307", # eval used for configuration parsing with validation
+]
+"app/services/processing/**/*" = [
+    "PLC0415", # Allow imports inside functions for optional ML dependencies
+]
+"app/core/database.py" = [
+    "PLW0603", # Allow global statements for database connection management
+    "PLW0602", # Allow global usage for connection cleanup
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+known-third-party = ["fastapi", "pydantic", "sqlalchemy", "alembic"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.flake8-type-checking]
+strict = false
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

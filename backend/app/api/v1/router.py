@@ -4,7 +4,7 @@ Main API router for v1 endpoints.
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import trends, stories, sources, websocket, ingestion
+from app.api.v1.endpoints import ingestion, sources, stories, trends, trust, websocket
 
 api_router = APIRouter()
 
@@ -14,3 +14,4 @@ api_router.include_router(stories.router, prefix="/stories", tags=["stories"])
 api_router.include_router(sources.router, prefix="/sources", tags=["sources"])
 api_router.include_router(ingestion.router, prefix="/ingestion", tags=["ingestion"])
 api_router.include_router(websocket.router, prefix="/ws", tags=["websocket"])
+api_router.include_router(trust.router, prefix="/trust", tags=["trust-scoring"])
