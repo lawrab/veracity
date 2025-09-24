@@ -91,6 +91,30 @@ class ApiService {
       return false;
     }
   }
+
+  // Generic REST methods
+  async get(endpoint: string): Promise<any> {
+    const response = await this.fetchWithTimeout(
+      `${this.baseUrl}/api/v1${endpoint}`
+    );
+    if (!response.ok) throw new Error(`Failed to fetch ${endpoint}`);
+    return response.json();
+  }
+
+  async post(endpoint: string, data?: any): Promise<any> {
+    const response = await this.fetchWithTimeout(
+      `${this.baseUrl}/api/v1${endpoint}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: data ? JSON.stringify(data) : undefined,
+      }
+    );
+    if (!response.ok) throw new Error(`Failed to post to ${endpoint}`);
+    return response.json();
+  }
 }
 
 export const apiService = new ApiService();
