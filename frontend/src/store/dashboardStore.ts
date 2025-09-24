@@ -28,7 +28,7 @@ interface DashboardState {
   stopPolling: () => void;
 }
 
-let pollingInterval: NodeJS.Timer | null = null;
+let pollingInterval: NodeJS.Timeout | null = null;
 
 export const useDashboardStore = create<DashboardState>((set, get) => ({
   // Initial state

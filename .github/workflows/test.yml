@@ -23,7 +23,7 @@ jobs:
         working-directory: backend
         run: |
           pip install --upgrade pip
-          pip install -e ".[dev,test]"
+          pip install -e ".[dev]"
           python -m spacy download en_core_web_sm
       
       - name: Run linters
