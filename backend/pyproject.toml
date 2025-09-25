@@ -351,6 +351,9 @@ ignore = [
     "PLW0603", # Allow global statements for database connection management
     "PLW0602", # Allow global usage for connection cleanup
 ]
+"app/schemas/**/*" = [
+    "TCH003", # Allow runtime imports of datetime/UUID in Pydantic schemas for model_validate
+]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
