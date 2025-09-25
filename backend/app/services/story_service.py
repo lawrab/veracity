@@ -59,9 +59,7 @@ class StoryService:
 
         return [StoryResponse.model_validate(story) for story in stories]
 
-    async def get_trending_stories(
-        self, limit: int = 20
-    ) -> list[StoryResponse]:
+    async def get_trending_stories(self, limit: int = 20) -> list[StoryResponse]:
         """Get trending stories ordered by velocity and trust score."""
         query = (
             select(Story)

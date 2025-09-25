@@ -41,6 +41,7 @@ async def get_trends(
         skip=skip, limit=limit, platform=platform, time_window=time_window
     )
 
+
 @router.get("/live", response_model=list[TrendResponse])
 async def get_live_trends(
     limit: int = Query(10, ge=1, le=50),

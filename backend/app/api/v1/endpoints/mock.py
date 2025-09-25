@@ -16,7 +16,12 @@ async def get_mock_trending_stories():
     """Return mock trending stories data."""
 
     categories = [
-        "Politics", "Technology", "Health", "Sports", "Entertainment", "Science"
+        "Politics",
+        "Technology",
+        "Health",
+        "Sports",
+        "Entertainment",
+        "Science",
     ]
 
     stories = []
@@ -38,8 +43,10 @@ async def get_mock_trending_stories():
             "geographic_spread": {
                 "US": round(random.uniform(20, 80), 1),
                 "EU": round(random.uniform(10, 60), 1),
-                "Asia": round(random.uniform(5, 40), 1)
-            } if random.choice([True, False]) else None,
+                "Asia": round(random.uniform(5, 40), 1),
+            }
+            if random.choice([True, False])
+            else None,
             "first_seen_at": (
                 datetime.now() - timedelta(hours=random.randint(1, 48))
             ).isoformat(),
@@ -48,7 +55,7 @@ async def get_mock_trending_stories():
             ).isoformat(),
             "created_at": (
                 datetime.now() - timedelta(hours=random.randint(2, 72))
-            ).isoformat()
+            ).isoformat(),
         }
         stories.append(story)
 
@@ -60,9 +67,18 @@ async def get_mock_live_trends():
     """Return mock trending topics data."""
 
     trend_names = [
-        "AI Revolution", "Climate Action", "Space Exploration", "Cryptocurrency",
-        "Remote Work", "Electric Vehicles", "Social Media", "Healthcare Reform",
-        "Tech Regulation", "Green Energy", "Digital Privacy", "Virtual Reality"
+        "AI Revolution",
+        "Climate Action",
+        "Space Exploration",
+        "Cryptocurrency",
+        "Remote Work",
+        "Electric Vehicles",
+        "Social Media",
+        "Healthcare Reform",
+        "Tech Regulation",
+        "Green Energy",
+        "Digital Privacy",
+        "Virtual Reality",
     ]
 
     trends = []
@@ -71,22 +87,30 @@ async def get_mock_live_trends():
             "id": f"trend_{i + 1}",
             "name": random.choice(trend_names),
             "description": f"Mock trending topic #{i + 1} for testing the dashboard",
-            "category": random.choice([
-                "Technology", "Politics", "Environment", "Business"
-            ]),
+            "category": random.choice(
+                ["Technology", "Politics", "Environment", "Business"]
+            ),
             "confidence_score": round(random.uniform(50, 95), 1),
             "story_count": random.randint(5, 50),
             "platform_distribution": {
                 "Twitter": round(random.uniform(20, 60), 1),
                 "Reddit": round(random.uniform(10, 40), 1),
                 "TikTok": round(random.uniform(5, 30), 1),
-                "Instagram": round(random.uniform(5, 25), 1)
+                "Instagram": round(random.uniform(5, 25), 1),
             },
             "peak_velocity": round(random.uniform(1.0, 25.0), 1),
-            "keywords": random.sample([
-                "trending", "viral", "breaking", "update",
-                "news", "analysis", "report"
-            ], 3),
+            "keywords": random.sample(
+                [
+                    "trending",
+                    "viral",
+                    "breaking",
+                    "update",
+                    "news",
+                    "analysis",
+                    "report",
+                ],
+                3,
+            ),
             "detected_at": (
                 datetime.now() - timedelta(hours=random.randint(1, 24))
             ).isoformat(),
@@ -95,7 +119,7 @@ async def get_mock_live_trends():
             ).isoformat(),
             "created_at": (
                 datetime.now() - timedelta(hours=random.randint(2, 48))
-            ).isoformat()
+            ).isoformat(),
         }
         trends.append(trend)
 
@@ -110,5 +134,5 @@ async def mock_health_check():
         "api": True,
         "database": True,
         "redis": True,
-        "elasticsearch": True
+        "elasticsearch": True,
     }

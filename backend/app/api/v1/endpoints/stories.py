@@ -41,6 +41,7 @@ async def get_stories(
         skip=skip, limit=limit, trust_score_min=trust_score_min, category=category
     )
 
+
 @router.get("/trending", response_model=list[StoryResponse])
 async def get_trending_stories(
     limit: int = Query(20, ge=1, le=100),
