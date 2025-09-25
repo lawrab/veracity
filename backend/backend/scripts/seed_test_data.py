@@ -2,17 +2,18 @@
 """
 Seed the database with test data for development and testing
 """
+# ruff: noqa: S311  # Using random for test data generation is acceptable
 
 import asyncio
 import random
-from datetime import datetime, timedelta, timezone
 import uuid
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
-from app.models.sql_models import Story, Trend, Source, TrustSignal
+from app.models.sql_models import Source, Story, Trend, TrustSignal
 
 # Database URL
 DATABASE_URL = settings.POSTGRES_URL.replace("postgresql://", "postgresql+asyncpg://")
@@ -44,19 +45,40 @@ STORY_DESCRIPTIONS = [
 ]
 
 TREND_TOPICS = [
-    "#TechInnovation", "#ClimateAction", "#MentalHealthAwareness",
-    "#EconomicUpdate", "#WildlifeConservation", "#EntertainmentNews",
-    "#PoliticalDebate", "#MedicalBreakthrough", "#CryptoNews", "#LocalHeroes"
+    "#TechInnovation",
+    "#ClimateAction",
+    "#MentalHealthAwareness",
+    "#EconomicUpdate",
+    "#WildlifeConservation",
+    "#EntertainmentNews",
+    "#PoliticalDebate",
+    "#MedicalBreakthrough",
+    "#CryptoNews",
+    "#LocalHeroes",
 ]
 
 SOURCE_NAMES = [
-    "Twitter", "Reddit", "TikTok", "Instagram", "NewsAPI",
-    "Reuters", "AP News", "BBC", "CNN", "Fox News"
+    "Twitter",
+    "Reddit",
+    "TikTok",
+    "Instagram",
+    "NewsAPI",
+    "Reuters",
+    "AP News",
+    "BBC",
+    "CNN",
+    "Fox News",
 ]
 
 CATEGORIES = [
-    "technology", "science", "politics", "entertainment", 
-    "health", "business", "environment", "sports"
+    "technology",
+    "science",
+    "politics",
+    "entertainment",
+    "health",
+    "business",
+    "environment",
+    "sports",
 ]
 
 PLATFORMS = ["twitter", "reddit", "tiktok", "instagram"]
@@ -75,19 +97,20 @@ async def seed_sources(session: AsyncSession):
             verified=random.choice([True, False]),
             follower_count=random.randint(1000, 10000000),
             credibility_score=random.uniform(50.0, 100.0),
-            created_at=datetime.now(timezone.utc) - timedelta(days=random.randint(30, 365))
+            created_at=datetime.now(timezone.utc)
+            - timedelta(days=random.randint(30, 365)),
         )
         sources.append(source)
         session.add(source)
-    
+
     await session.commit()
     return sources
 
 
-async def seed_stories(session: AsyncSession, sources):
+async def seed_stories(session: AsyncSession):
     """Create story records"""
     stories = []
-    for i, title in enumerate(STORY_TITLES):
+    for _, title in enumerate(STORY_TITLES):
         story = Story(
             id=uuid.uuid4(),
             title=title,
@@ -95,13 +118,18 @@ async def seed_stories(session: AsyncSession, sources):
             category=random.choice(CATEGORIES),
             trust_score=random.uniform(30.0, 100.0),  # 0-100 scale
             velocity=random.uniform(0.1, 10.0),  # mentions per hour
-            geographic_spread={"US": random.randint(20, 50), "UK": random.randint(10, 30), "EU": random.randint(10, 30)},
-            first_seen_at=datetime.now(timezone.utc) - timedelta(hours=random.randint(1, 72)),
-            last_updated_at=datetime.now(timezone.utc)
+            geographic_spread={
+                "US": random.randint(20, 50),
+                "UK": random.randint(10, 30),
+                "EU": random.randint(10, 30),
+            },
+            first_seen_at=datetime.now(timezone.utc)
+            - timedelta(hours=random.randint(1, 72)),
+            last_updated_at=datetime.now(timezone.utc),
         )
         stories.append(story)
         session.add(story)
-    
+
     await session.commit()
     return stories
 
@@ -113,18 +141,22 @@ async def seed_trends(session: AsyncSession):
         trend = Trend(
             id=uuid.uuid4(),
             story_id=None,  # Will associate with stories later
-            keywords=[topic.replace("#", ""), random.choice(["news", "breaking", "update"])],
+            keywords=[
+                topic.replace("#", ""),
+                random.choice(["news", "breaking", "update"]),
+            ],
             hashtags=[topic] if topic.startswith("#") else [f"#{topic}"],
             platforms=random.sample(PLATFORMS, k=random.randint(1, 3)),
             mention_count=random.randint(100, 100000),
             velocity=random.uniform(0.5, 20.0),
             sentiment_score=random.uniform(-1.0, 1.0),
-            detected_at=datetime.now(timezone.utc) - timedelta(hours=random.randint(1, 48)),
-            peak_at=datetime.now(timezone.utc) - timedelta(hours=random.randint(1, 24))
+            detected_at=datetime.now(timezone.utc)
+            - timedelta(hours=random.randint(1, 48)),
+            peak_at=datetime.now(timezone.utc) - timedelta(hours=random.randint(1, 24)),
         )
         trends.append(trend)
         session.add(trend)
-    
+
     await session.commit()
     return trends
 
@@ -132,10 +164,14 @@ async def seed_trends(session: AsyncSession):
 async def seed_trust_signals(session: AsyncSession, stories):
     """Create trust signal records"""
     signal_types = [
-        "source_credibility", "velocity_pattern", "cross_platform_correlation",
-        "engagement_authenticity", "temporal_consistency", "content_quality"
+        "source_credibility",
+        "velocity_pattern",
+        "cross_platform_correlation",
+        "engagement_authenticity",
+        "temporal_consistency",
+        "content_quality",
     ]
-    
+
     for story in stories:
         for signal_type in signal_types:
             if random.random() > 0.3:  # Create signals for 70% of combinations
@@ -146,10 +182,10 @@ async def seed_trust_signals(session: AsyncSession, stories):
                     value=random.uniform(0.0, 1.0),
                     weight=random.uniform(0.5, 1.0),
                     explanation=f"Analysis of {signal_type} for story",
-                    calculated_at=datetime.now(timezone.utc)
+                    calculated_at=datetime.now(timezone.utc),
                 )
                 session.add(signal)
-    
+
     await session.commit()
 
 
@@ -159,47 +195,47 @@ async def associate_trends_with_stories(session: AsyncSession, stories, trends):
     for i, trend in enumerate(trends):
         if i < len(stories):
             trend.story_id = stories[i].id
-    
+
     await session.commit()
 
 
 async def main():
     """Main function to seed the database"""
     print("🌱 Starting database seeding...")
-    
+
     async with AsyncSessionLocal() as session:
         try:
             # Seed sources first
             print("Creating sources...")
             sources = await seed_sources(session)
             print(f"✅ Created {len(sources)} sources")
-            
+
             # Seed stories
             print("Creating stories...")
-            stories = await seed_stories(session, sources)
+            stories = await seed_stories(session)
             print(f"✅ Created {len(stories)} stories")
-            
+
             # Seed trends
             print("Creating trends...")
             trends = await seed_trends(session)
             print(f"✅ Created {len(trends)} trends")
-            
+
             # Seed trust signals
             print("Creating trust signals...")
             await seed_trust_signals(session, stories)
             print("✅ Created trust signals")
-            
+
             # Associate trends with stories
             print("Associating trends with stories...")
             await associate_trends_with_stories(session, stories, trends)
             print("✅ Associated trends with stories")
-            
+
             print("\n🎉 Database seeding completed successfully!")
             print(f"   - {len(sources)} sources")
             print(f"   - {len(stories)} stories")
             print(f"   - {len(trends)} trends")
             print("   - Trust signals and associations created")
-            
+
         except Exception as e:
             print(f"❌ Error seeding database: {e}")
             raise
