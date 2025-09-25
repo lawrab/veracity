@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
-from uuid import UUID
 
 from sqlalchemy import and_, desc, func, select
 
@@ -15,6 +14,8 @@ from app.models.sql_models import Mention, Source, Trend
 from app.schemas.trend import TrendCreate, TrendEvolution, TrendResponse, TrendSource
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = get_logger(__name__)

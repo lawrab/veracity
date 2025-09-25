@@ -5,7 +5,6 @@ Trends API endpoints.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -14,6 +13,8 @@ from app.schemas.trend import TrendResponse
 from app.services.trend_service import TrendService
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
@@ -47,7 +48,7 @@ async def get_live_trends(
 ):
     """
     Get live/real-time trends ordered by recent activity.
-    
+
     - **limit**: Maximum number of live trends to return
     """
     trend_service = TrendService(db)

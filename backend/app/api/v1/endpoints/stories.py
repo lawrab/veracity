@@ -5,7 +5,6 @@ Stories API endpoints.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -14,6 +13,8 @@ from app.schemas.story import StoryResponse
 from app.services.story_service import StoryService
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
@@ -47,7 +48,7 @@ async def get_trending_stories(
 ):
     """
     Get trending stories ordered by velocity and trust score.
-    
+
     - **limit**: Maximum number of trending stories to return
     """
     story_service = StoryService(db)

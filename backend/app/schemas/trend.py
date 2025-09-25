@@ -4,11 +4,13 @@ Trend schema definitions.
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import TYPE_CHECKING
-from uuid import UUID
 
 from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from datetime import datetime
+    from uuid import UUID
 
 
 class TrendBase(BaseModel):
