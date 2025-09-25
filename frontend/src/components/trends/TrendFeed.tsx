@@ -24,7 +24,20 @@ export default function TrendFeed() {
   const fetchTrends = async () => {
     try {
       const response = await apiService.get('/trends/live');
-      setTrends((response || []).slice(0, 10)); // Show top 10 trends
+      // Transform API response to match Trend type
+      const transformedTrends = (response || []).slice(0, 10).map((trend: any) => ({
+        ...trend,
+        name: trend.keywords?.[0] || trend.hashtags?.[0] || 'Unknown Trend',
+        description: `${trend.mention_count || 0} mentions across ${trend.platforms?.join(', ') || 'platforms'}`,
+        confidence_score: Math.round((trend.sentiment_score || 0) * 50 + 50), // Convert -1 to 1 to 0 to 100
+        story_count: 1, // Since each trend has a story_id
+        peak_velocity: trend.velocity || 0,
+        platform_distribution: trend.platforms?.reduce((acc: any, p: string) => {
+          acc[p] = Math.round(100 / (trend.platforms?.length || 1));
+          return acc;
+        }, {}) || {}
+      }));
+      setTrends(transformedTrends);
       setError(null);
     } catch (err) {
       setError('Failed to fetch trends');

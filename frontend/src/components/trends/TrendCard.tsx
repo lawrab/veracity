@@ -21,7 +21,8 @@ export default function TrendCard({ trend, compact = false }: TrendCardProps) {
     return 'text-orange-600 dark:text-orange-400';
   };
 
-  const formatVelocity = (velocity: number) => {
+  const formatVelocity = (velocity: number | undefined) => {
+    if (!velocity && velocity !== 0) return '0.0x';
     if (velocity >= 10) return `${velocity.toFixed(0)}x 🔥`;
     if (velocity >= 5) return `${velocity.toFixed(1)}x`;
     return `${velocity.toFixed(1)}x`;
@@ -43,7 +44,7 @@ export default function TrendCard({ trend, compact = false }: TrendCardProps) {
                 </span>
                 <span className="flex items-center">
                   <ChartBarIcon className="h-3 w-3 mr-1" />
-                  {trend.story_count} stories
+                  {trend.story_count || 0} stories
                 </span>
               </div>
               {trend.keywords && trend.keywords.length > 0 && (
@@ -55,8 +56,8 @@ export default function TrendCard({ trend, compact = false }: TrendCardProps) {
                 </div>
               )}
             </div>
-            <div className={`ml-2 text-xs font-medium ${getConfidenceColor(trend.confidence_score)}`}>
-              {trend.confidence_score}%
+            <div className={`ml-2 text-xs font-medium ${getConfidenceColor(trend.confidence_score || 0)}`}>
+              {trend.confidence_score || 0}%
             </div>
           </div>
         </div>
@@ -71,8 +72,8 @@ export default function TrendCard({ trend, compact = false }: TrendCardProps) {
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             {trend.name}
           </h3>
-          <div className={`ml-4 text-sm font-medium ${getConfidenceColor(trend.confidence_score)}`}>
-            {trend.confidence_score}% confidence
+          <div className={`ml-4 text-sm font-medium ${getConfidenceColor(trend.confidence_score || 0)}`}>
+            {trend.confidence_score || 0}% confidence
           </div>
         </div>
 
@@ -92,7 +93,7 @@ export default function TrendCard({ trend, compact = false }: TrendCardProps) {
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400">Story Count</p>
             <p className="text-lg font-semibold text-gray-900 dark:text-white">
-              {trend.story_count}
+              {trend.story_count || 0}
             </p>
           </div>
         </div>
