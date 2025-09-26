@@ -23,7 +23,7 @@ export default function ConnectionStatus() {
         ) : (
           <>
             <XCircleIcon className="h-4 w-4" />
-            <span className="text-xs font-medium">Reconnecting...</span>
+            <span className="text-xs font-medium">Offline</span>
           </>
         )}
       </div>

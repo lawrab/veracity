@@ -45,222 +45,18 @@ export function useWebSocket(
   channel: string = 'general',
   options: WebSocketOptions = {}
 ): UseWebSocketReturn {
-  const {
-    autoReconnect = true,
-    reconnectInterval = 5000,
-    maxReconnectAttempts = 10,
-    heartbeatInterval = 30000,
-    authToken,
-    onOpen,
-    onClose,
-    onError,
-    onMessage,
-  } = options;
-
-  const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
-  const [readyState, setReadyState] = useState<WebSocketState>(WebSocketState.CONNECTING);
+  // TEMPORARY: Return a disabled WebSocket hook to stop connection spam
+  const [lastMessage] = useState<WebSocketMessage | null>(null);
+  const [readyState] = useState<WebSocketState>(WebSocketState.CLOSED);
   
-  const ws = useRef<WebSocket | null>(null);
-  const reconnectCount = useRef(0);
-  const reconnectTimeout = useRef<NodeJS.Timeout>();
-  const heartbeatTimer = useRef<NodeJS.Timeout>();
-  const messageQueue = useRef<any[]>([]);
-  const subscribedChannels = useRef<Set<string>>(new Set([channel]));
-
-  const startHeartbeat = useCallback(() => {
-    if (heartbeatTimer.current) {
-      clearInterval(heartbeatTimer.current);
-    }
-
-    heartbeatTimer.current = setInterval(() => {
-      if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-        ws.current.send(JSON.stringify({ type: 'pong' }));
-      }
-    }, heartbeatInterval);
-  }, [heartbeatInterval]);
-
-  const stopHeartbeat = useCallback(() => {
-    if (heartbeatTimer.current) {
-      clearInterval(heartbeatTimer.current);
-    }
-  }, []);
-
-  const processMessageQueue = useCallback(() => {
-    while (messageQueue.current.length > 0 && ws.current?.readyState === WebSocket.OPEN) {
-      const message = messageQueue.current.shift();
-      ws.current.send(JSON.stringify(message));
-    }
-  }, []);
-
-  const connect = useCallback(() => {
-    try {
-      // Build connection URL with parameters
-      const wsUrl = new URL(url);
-      wsUrl.searchParams.append('channel', channel);
-      if (authToken) {
-        wsUrl.searchParams.append('token', authToken);
-      }
-
-      ws.current = new WebSocket(wsUrl.toString());
-      setReadyState(WebSocketState.CONNECTING);
-
-      ws.current.onopen = () => {
-        console.log('WebSocket connected');
-        setReadyState(WebSocketState.OPEN);
-        reconnectCount.current = 0;
-        
-        // Subscribe to all channels
-        subscribedChannels.current.forEach(ch => {
-          if (ch !== channel) {
-            ws.current?.send(JSON.stringify({
-              type: 'subscribe',
-              channel: ch
-            }));
-          }
-        });
-
-        // Process queued messages
-        processMessageQueue();
-        
-        // Start heartbeat
-        startHeartbeat();
-        
-        onOpen?.();
-      };
-
-      ws.current.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data) as WebSocketMessage;
-          
-          // Handle ping messages
-          if (message.type === 'ping') {
-            ws.current?.send(JSON.stringify({ type: 'pong' }));
-            return;
-          }
-
-          setLastMessage(message);
-          onMessage?.(message);
-        } catch (error) {
-          console.error('Failed to parse WebSocket message:', error);
-        }
-      };
-
-      ws.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        onError?.(error);
-      };
-
-      ws.current.onclose = () => {
-        console.log('WebSocket disconnected');
-        setReadyState(WebSocketState.CLOSED);
-        stopHeartbeat();
-        onClose?.();
-
-        // Auto-reconnect if enabled
-        if (autoReconnect && reconnectCount.current < maxReconnectAttempts) {
-          setReadyState(WebSocketState.RECONNECTING);
-          reconnectTimeout.current = setTimeout(() => {
-            reconnectCount.current++;
-            console.log(`Reconnecting... (attempt ${reconnectCount.current})`);
-            connect();
-          }, reconnectInterval);
-        }
-      };
-    } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
-      setReadyState(WebSocketState.CLOSED);
-    }
-  }, [
-    url,
-    channel,
-    authToken,
-    autoReconnect,
-    reconnectInterval,
-    maxReconnectAttempts,
-    onOpen,
-    onClose,
-    onError,
-    onMessage,
-    processMessageQueue,
-    startHeartbeat,
-    stopHeartbeat,
-  ]);
-
-  const sendMessage = useCallback((message: any) => {
-    const data = typeof message === 'string' ? { data: message } : message;
-    
-    if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify(data));
-    } else {
-      // Queue message for later delivery
-      messageQueue.current.push(data);
-    }
-  }, []);
-
-  const subscribe = useCallback((newChannel: string) => {
-    subscribedChannels.current.add(newChannel);
-    
-    if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({
-        type: 'subscribe',
-        channel: newChannel
-      }));
-    }
-  }, []);
-
-  const unsubscribe = useCallback((channelToRemove: string) => {
-    subscribedChannels.current.delete(channelToRemove);
-    
-    if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({
-        type: 'unsubscribe',
-        channel: channelToRemove
-      }));
-    }
-  }, []);
-
-  const reconnect = useCallback(() => {
-    if (reconnectTimeout.current) {
-      clearTimeout(reconnectTimeout.current);
-    }
-    
-    if (ws.current) {
-      ws.current.close();
-    }
-    
-    reconnectCount.current = 0;
-    connect();
-  }, [connect]);
-
-  const disconnect = useCallback(() => {
-    if (reconnectTimeout.current) {
-      clearTimeout(reconnectTimeout.current);
-    }
-    
-    stopHeartbeat();
-    
-    if (ws.current) {
-      ws.current.close();
-      ws.current = null;
-    }
-  }, [stopHeartbeat]);
-
-  useEffect(() => {
-    connect();
-
-    return () => {
-      disconnect();
-    };
-  }, [connect, disconnect]);
-
   return {
-    sendMessage,
+    sendMessage: () => { console.log('WebSocket sendMessage disabled'); },
     lastMessage,
     readyState,
-    subscribe,
-    unsubscribe,
-    reconnect,
-    disconnect,
+    subscribe: () => { console.log('WebSocket subscribe disabled'); },
+    unsubscribe: () => { console.log('WebSocket unsubscribe disabled'); },
+    reconnect: () => { console.log('WebSocket reconnect disabled'); },
+    disconnect: () => { console.log('WebSocket disconnect disabled'); },
   };
 }
 
@@ -270,6 +66,10 @@ export function useTrendUpdates(onTrendUpdate?: (trend: any) => void) {
   const wsUrl = apiUrl.replace('http', 'ws') + '/api/v1/ws/v2/trends';
   
   return useWebSocket(wsUrl, 'trends', {
+    autoReconnect: false, // Disable auto-reconnect for now to prevent spam
+    reconnectInterval: 300000, // 5 minutes if manually triggered
+    maxReconnectAttempts: 1, // Only one attempt
+    heartbeatInterval: 300000, // 5 minutes
     onMessage: (message) => {
       if (message.type === 'trend_update' && onTrendUpdate) {
         onTrendUpdate(message.data);
@@ -285,6 +85,10 @@ export function useStoryUpdates(storyId?: string, onStoryUpdate?: (story: any) =
   const wsUrl = apiUrl.replace('http', 'ws') + '/api/v1/ws/v2/stories';
   
   return useWebSocket(wsUrl, channel, {
+    autoReconnect: false, // Disable auto-reconnect for now to prevent spam
+    reconnectInterval: 300000, // 5 minutes if manually triggered
+    maxReconnectAttempts: 1, // Only one attempt
+    heartbeatInterval: 300000, // 5 minutes
     onMessage: (message) => {
       if (message.type === 'story_update' && onStoryUpdate) {
         onStoryUpdate(message.data);
@@ -299,6 +103,10 @@ export function useTrustScoreUpdates(onScoreUpdate?: (update: any) => void) {
   const wsUrl = apiUrl.replace('http', 'ws') + '/api/v1/ws/v2/trust-scores';
   
   return useWebSocket(wsUrl, 'trust_scores', {
+    autoReconnect: false, // Disable auto-reconnect for now to prevent spam
+    reconnectInterval: 300000, // 5 minutes if manually triggered
+    maxReconnectAttempts: 1, // Only one attempt
+    heartbeatInterval: 300000, // 5 minutes
     onMessage: (message) => {
       if (message.type === 'trust_score_update' && onScoreUpdate) {
         onScoreUpdate({

@@ -1,23 +1,30 @@
 import { useState, useEffect } from 'react';
 
 export function useDarkMode() {
-  const [isDark, setIsDark] = useState(() => {
-    // Initialize with the correct value to avoid hydration mismatch
-    if (typeof window === 'undefined') {
-      return false; // SSR default
-    }
+  // Always start with false to ensure server/client consistency
+  const [isDark, setIsDark] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    // This runs only on the client after hydration
+    setHasMounted(true);
     
     // Check if user has a saved preference
     const saved = localStorage.getItem('darkMode');
     if (saved) {
-      return JSON.parse(saved);
+      setIsDark(JSON.parse(saved));
+      return;
     }
     
     // Default to system preference
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setIsDark(systemDark);
+  }, []);
 
   useEffect(() => {
+    // Only apply changes after component has mounted
+    if (!hasMounted) return;
+    
     // Apply dark mode class to document
     if (isDark) {
       document.documentElement.classList.add('dark');
@@ -26,7 +33,7 @@ export function useDarkMode() {
     }
     // Save preference
     localStorage.setItem('darkMode', JSON.stringify(isDark));
-  }, [isDark]);
+  }, [isDark, hasMounted]);
 
   const toggleDarkMode = () => setIsDark(!isDark);
 

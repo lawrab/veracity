@@ -20,6 +20,11 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [latestTrend, setLatestTrend] = useState<any | null>(null);
   const [latestStory, setLatestStory] = useState<any | null>(null);
   const [latestTrustScore, setLatestTrustScore] = useState<any | null>(null);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   // Connect to trend updates
   const trendsWs = useTrendUpdates((trend) => {
