@@ -4,7 +4,7 @@ Trends API endpoints.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -13,12 +13,14 @@ from app.schemas.trend import TrendResponse
 from app.services.trend_service import TrendService
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
 
-@router.get("/", response_model=List[TrendResponse])
+@router.get("/", response_model=list[TrendResponse])
 async def get_trends(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
@@ -40,9 +42,23 @@ async def get_trends(
     )
 
 
+@router.get("/live", response_model=list[TrendResponse])
+async def get_live_trends(
+    limit: int = Query(10, ge=1, le=50),
+    db: AsyncSession = Depends(get_postgres_session),
+):
+    """
+    Get live/real-time trends ordered by recent activity.
+
+    - **limit**: Maximum number of live trends to return
+    """
+    trend_service = TrendService(db)
+    return await trend_service.get_live_trends(limit=limit)
+
+
 @router.get("/{trend_id}", response_model=TrendResponse)
 async def get_trend(
-    trend_id: str,
+    trend_id: UUID,
     db: AsyncSession = Depends(get_postgres_session),
 ):
     """Get specific trend by ID."""
@@ -55,7 +71,7 @@ async def get_trend(
 
 @router.get("/{trend_id}/evolution")
 async def get_trend_evolution(
-    trend_id: str,
+    trend_id: UUID,
     db: AsyncSession = Depends(get_postgres_session),
 ):
     """Get trend evolution data over time."""
@@ -68,7 +84,7 @@ async def get_trend_evolution(
 
 @router.get("/{trend_id}/sources")
 async def get_trend_sources(
-    trend_id: str,
+    trend_id: UUID,
     db: AsyncSession = Depends(get_postgres_session),
 ):
     """Get sources contributing to a trend."""

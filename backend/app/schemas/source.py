@@ -11,6 +11,10 @@ from pydantic import BaseModel, Field
 if TYPE_CHECKING:
     from datetime import datetime
     from uuid import UUID
+else:
+    # Import at runtime for Pydantic's model_validate
+    from datetime import datetime
+    from uuid import UUID
 
 
 class SourceBase(BaseModel):

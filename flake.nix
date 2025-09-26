@@ -66,6 +66,10 @@
             libffi
             zlib
             
+            # C++ standard library for greenlet
+            stdenv.cc.cc.lib
+            glibc
+            
             # spaCy language models (we'll download these in the shell hook)
             
             # Container networking
@@ -109,6 +113,9 @@
             export NODE_ENV=development
             export DOCKER_HOST="unix:///run/user/$(id -u)/podman/podman.sock"
             export BUILDAH_FORMAT=docker
+            
+            # Fix library path for greenlet and other C extensions
+            export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.glibc}/lib:$LD_LIBRARY_PATH"
             
             # Create necessary directories
             mkdir -p data/{raw,processed}
