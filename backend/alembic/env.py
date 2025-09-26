@@ -2,20 +2,24 @@ import os
 import sys
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
 from alembic import context
+from sqlalchemy import engine_from_config, pool
 
 # Add the parent directory to the path to import our models
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Load environment variables from .env file
 from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), '.env'))
 
-from app.models.sql_models import Base
+load_dotenv(
+    os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        ".env",
+    )
+)
+
 from app.core.config import settings
+from app.models.sql_models import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -73,12 +77,14 @@ def run_migrations_online() -> None:
     configuration = config.get_section(config.config_ini_section)
     if configuration is None:
         configuration = {}
-    
+
     # Set the database URL if not in config
     if "sqlalchemy.url" not in configuration:
         # Convert async URL to sync URL for Alembic
-        configuration["sqlalchemy.url"] = settings.POSTGRES_URL.replace("postgresql+asyncpg://", "postgresql://")
-    
+        configuration["sqlalchemy.url"] = settings.POSTGRES_URL.replace(
+            "postgresql+asyncpg://", "postgresql://"
+        )
+
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",
@@ -86,9 +92,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

@@ -10,7 +10,6 @@ from app.api.v1.endpoints import (
     stories,
     trends,
     trust,
-    websocket,
     websocket_enhanced,
 )
 

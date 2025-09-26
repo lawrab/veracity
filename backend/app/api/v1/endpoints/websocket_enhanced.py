@@ -2,8 +2,9 @@
 Enhanced WebSocket endpoints with authentication, heartbeat, and scaling.
 """
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, Header
 from typing import Optional
+
+from fastapi import APIRouter, Header, Query, WebSocket, WebSocketDisconnect
 
 from app.core.logging import get_logger
 from app.services.websocket_manager import websocket_manager
@@ -30,11 +31,11 @@ async def shutdown_event():
 async def websocket_endpoint(
     websocket: WebSocket,
     channel: Optional[str] = Query(default="general"),
-    token: Optional[str] = Header(default=None)
+    token: Optional[str] = Header(default=None),
 ):
     """
     Main WebSocket endpoint with multi-channel support.
-    
+
     Clients can:
     - Connect with optional authentication token
     - Subscribe/unsubscribe to multiple channels
@@ -46,24 +47,21 @@ async def websocket_endpoint(
     if token:
         # TODO: Decode JWT token to get user_id
         user_id = f"user_{token[:8]}"  # Placeholder
-    
+
     # Connect to WebSocket
     connected = await websocket_manager.connect(
-        websocket=websocket,
-        channel=channel,
-        user_id=user_id,
-        auth_token=token
+        websocket=websocket, channel=channel, user_id=user_id, auth_token=token
     )
-    
+
     if not connected:
         return
-    
+
     try:
         while True:
             # Handle incoming messages
             message = await websocket.receive_text()
             await websocket_manager.handle_message(websocket, message)
-            
+
     except WebSocketDisconnect:
         await websocket_manager.disconnect(websocket)
         logger.info(f"Client disconnected from {channel}")
@@ -74,8 +72,7 @@ async def websocket_endpoint(
 
 @router.websocket("/trends")
 async def websocket_trends(
-    websocket: WebSocket,
-    token: Optional[str] = Header(default=None)
+    websocket: WebSocket, token: Optional[str] = Header(default=None)
 ):
     """WebSocket endpoint specifically for trend updates."""
     await websocket_endpoint(websocket, "trends", token)
@@ -83,8 +80,7 @@ async def websocket_trends(
 
 @router.websocket("/stories")
 async def websocket_stories(
-    websocket: WebSocket,
-    token: Optional[str] = Header(default=None)
+    websocket: WebSocket, token: Optional[str] = Header(default=None)
 ):
     """WebSocket endpoint for story updates."""
     await websocket_endpoint(websocket, "stories", token)
@@ -92,9 +88,7 @@ async def websocket_stories(
 
 @router.websocket("/stories/{story_id}")
 async def websocket_story_specific(
-    websocket: WebSocket,
-    story_id: str,
-    token: Optional[str] = Header(default=None)
+    websocket: WebSocket, story_id: str, token: Optional[str] = Header(default=None)
 ):
     """WebSocket endpoint for specific story updates."""
     await websocket_endpoint(websocket, f"story:{story_id}", token)
@@ -102,8 +96,7 @@ async def websocket_story_specific(
 
 @router.websocket("/trust-scores")
 async def websocket_trust_scores(
-    websocket: WebSocket,
-    token: Optional[str] = Header(default=None)
+    websocket: WebSocket, token: Optional[str] = Header(default=None)
 ):
     """WebSocket endpoint for trust score updates."""
     await websocket_endpoint(websocket, "trust_scores", token)

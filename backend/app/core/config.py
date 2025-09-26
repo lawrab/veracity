@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     # ML Models
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
     CLASSIFICATION_MODEL: str = "distilbert-base-uncased"
-    
+
     # WebSocket Configuration
     REQUIRE_WEBSOCKET_AUTH: bool = False  # Set to True in production
     WEBSOCKET_MAX_CONNECTIONS: int = 10000
