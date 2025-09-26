@@ -5,6 +5,9 @@ export interface WebSocketMessage {
   data?: any;
   timestamp?: string;
   error?: string;
+  story_id?: string;
+  trust_score?: number;
+  signals?: any[];
 }
 
 export interface WebSocketOptions {
@@ -60,16 +63,16 @@ export function useWebSocket(
   const ws = useRef<WebSocket | null>(null);
   const reconnectCount = useRef(0);
   const reconnectTimeout = useRef<NodeJS.Timeout>();
-  const heartbeatInterval = useRef<NodeJS.Timeout>();
+  const heartbeatTimer = useRef<NodeJS.Timeout>();
   const messageQueue = useRef<any[]>([]);
   const subscribedChannels = useRef<Set<string>>(new Set([channel]));
 
   const startHeartbeat = useCallback(() => {
-    if (heartbeatInterval.current) {
-      clearInterval(heartbeatInterval.current);
+    if (heartbeatTimer.current) {
+      clearInterval(heartbeatTimer.current);
     }
 
-    heartbeatInterval.current = setInterval(() => {
+    heartbeatTimer.current = setInterval(() => {
       if (ws.current && ws.current.readyState === WebSocket.OPEN) {
         ws.current.send(JSON.stringify({ type: 'pong' }));
       }
@@ -77,8 +80,8 @@ export function useWebSocket(
   }, [heartbeatInterval]);
 
   const stopHeartbeat = useCallback(() => {
-    if (heartbeatInterval.current) {
-      clearInterval(heartbeatInterval.current);
+    if (heartbeatTimer.current) {
+      clearInterval(heartbeatTimer.current);
     }
   }, []);
 
