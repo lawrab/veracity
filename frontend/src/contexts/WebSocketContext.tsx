@@ -1,7 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useTrendUpdates, useStoryUpdates, useTrustScoreUpdates } from '@/hooks/useWebSocket';
+import { useTrendUpdates, useStoryUpdates, useTrustScoreUpdates } from '@/hooks/useRealtimeData';
+import { useSharedWebSocket } from '@/hooks/useSharedWebSocket';
 import { toast } from 'react-hot-toast';
 
 interface WebSocketContextType {
@@ -16,18 +17,33 @@ interface WebSocketContextType {
 const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
 
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
-  const [isConnected, setIsConnected] = useState(false);
   const [latestTrend, setLatestTrend] = useState<any | null>(null);
   const [latestStory, setLatestStory] = useState<any | null>(null);
   const [latestTrustScore, setLatestTrustScore] = useState<any | null>(null);
   const [hasMounted, setHasMounted] = useState(false);
 
+  // Use the shared WebSocket connection
+  const { isConnected } = useSharedWebSocket({
+    shouldReconnect: true,
+    reconnectAttempts: 10,
+    reconnectInterval: 3000,
+    onOpen: () => {
+      console.log('WebSocket connected successfully');
+    },
+    onClose: () => {
+      console.log('WebSocket disconnected');
+    },
+    onError: (error) => {
+      console.error('WebSocket error:', error);
+    },
+  });
+
   useEffect(() => {
     setHasMounted(true);
   }, []);
 
-  // Connect to trend updates
-  const trendsWs = useTrendUpdates((trend) => {
+  // Subscribe to trend updates using shared connection
+  useTrendUpdates((trend) => {
     setLatestTrend(trend);
     
     // Show toast notification for high-velocity trends
@@ -39,8 +55,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
-  // Connect to story updates
-  const storiesWs = useStoryUpdates(undefined, (story) => {
+  // Subscribe to story updates using shared connection
+  useStoryUpdates(undefined, (story) => {
     setLatestStory(story);
     
     // Show toast for breaking news
@@ -56,8 +72,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
-  // Connect to trust score updates
-  const trustWs = useTrustScoreUpdates((update) => {
+  // Subscribe to trust score updates using shared connection
+  useTrustScoreUpdates((update) => {
     setLatestTrustScore(update);
     
     // Alert for low trust scores
@@ -69,28 +85,13 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
-  // Track connection status
-  useEffect(() => {
-    const checkConnection = () => {
-      const connected = 
-        trendsWs.readyState === 'OPEN' ||
-        storiesWs.readyState === 'OPEN' ||
-        trustWs.readyState === 'OPEN';
-      setIsConnected(connected);
-    };
-
-    checkConnection();
-    const interval = setInterval(checkConnection, 1000);
-
-    return () => clearInterval(interval);
-  }, [trendsWs.readyState, storiesWs.readyState, trustWs.readyState]);
-
+  // These functions are now handled by the individual hooks
   const subscribeToStory = (storyId: string) => {
-    storiesWs.subscribe(`story:${storyId}`);
+    console.log(`Subscribe to story ${storyId} handled by useStoryUpdates hook`);
   };
 
   const unsubscribeFromStory = (storyId: string) => {
-    storiesWs.unsubscribe(`story:${storyId}`);
+    console.log(`Unsubscribe from story ${storyId} handled by useStoryUpdates hook`);
   };
 
   return (

@@ -168,15 +168,73 @@ class TrendService:
         # Async processing logic
 ```
 
-### Real-time Updates
-WebSocket connections managed through centralized manager:
-```python
-# Backend: Broadcast updates
-await websocket_manager.broadcast_trend_update(trend_data)
+### Real-time Updates (WebSocket Implementation)
+**Current Implementation**: Single shared WebSocket connection with channel multiplexing (Industry best practice - Discord/Slack pattern)
 
-# Frontend: Subscribe to updates  
-useWebSocket('/ws/trends', onTrendUpdate)
+#### Backend Architecture
+WebSocket connections managed through centralized enhanced manager:
+```python
+# Backend: Broadcast to specific channels
+await websocket_manager.broadcast_trend_update(trend_data)      # -> 'trends' channel
+await websocket_manager.broadcast_story_update(story_data)      # -> 'stories' channel  
+await websocket_manager.broadcast_trust_score_update(...)       # -> 'trust_scores' channel
+
+# Enhanced manager supports:
+# - Redis pub/sub for horizontal scaling
+# - Authentication and rate limiting
+# - Heartbeat/keepalive for connection health
+# - Channel subscription/unsubscription via messages
 ```
+
+#### Frontend Architecture
+**Key Files:**
+- `src/hooks/useSharedWebSocket.ts` - Core shared connection hook using react-use-websocket
+- `src/hooks/useRealtimeData.ts` - Specialized hooks for different data types
+- `src/contexts/WebSocketContext.tsx` - React context provider for WebSocket state
+
+**Usage Pattern:**
+```typescript
+// Single shared connection (automatically handles reconnection)
+const { subscribe, unsubscribe, isConnected } = useSharedWebSocket();
+
+// Subscribe to specific channels
+useEffect(() => {
+  const handleMessage = (message) => {
+    if (message.type === 'trend_update') {
+      setLatestTrend(message.data);
+    }
+  };
+  
+  subscribe('trends', handleMessage);
+  return () => unsubscribe('trends');
+}, []);
+
+// Specialized hooks for convenience
+useTrendUpdates(onTrendUpdate);        // Auto-subscribes to 'trends' 
+useStoryUpdates(storyId, onUpdate);    // Auto-subscribes to 'stories' or 'story:id'
+useTrustScoreUpdates(onScoreUpdate);   // Auto-subscribes to 'trust_scores'
+```
+
+#### WebSocket Endpoints
+```
+/api/v1/ws/connect               # Main consolidated endpoint (all traffic)
+  - Query: ?channel=general      # Initial channel to join
+  - Supports: Dynamic channel subscription via messages
+  - Handles: Authentication, heartbeat, rate limiting
+  
+Message Protocol:
+{
+  "type": "subscribe|unsubscribe|pong",
+  "channel": "trends|stories|trust_scores|story:123" 
+}
+```
+
+#### Key Benefits
+- **Single Connection**: Eliminates connection spam (was major issue)
+- **Shared State**: All components use same WebSocket instance via react-use-websocket
+- **Channel Multiplexing**: Multiple data streams through one connection
+- **Auto-Reconnection**: Built-in exponential backoff and connection recovery
+- **Scalable**: Redis pub/sub enables horizontal backend scaling
 
 ### Error Handling
 Structured logging with error tracking:
@@ -245,7 +303,7 @@ Production requires these environment variables:
 - **TypeScript**: Type safety
 - **Zustand**: State management
 - **Recharts**: Data visualization
-- **Socket.io**: Real-time communication
+- **react-use-websocket**: Shared WebSocket connections with auto-reconnection
 
 ### Infrastructure
 - **Kafka**: Message streaming
@@ -472,3 +530,28 @@ cat .env
 # Verify required variables are set
 grep -E "TWITTER_BEARER_TOKEN|REDDIT_CLIENT_ID|SECRET_KEY" .env
 ```
+
+### WebSocket Issues
+**Connection Problems:**
+```bash
+# Check if backend WebSocket endpoint is accessible
+curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" http://localhost:8000/api/v1/ws/connect
+
+# Check backend logs for WebSocket connections
+# Look for: "Client connected to channel 'general'" messages
+
+# Frontend: Check browser developer tools
+# Network tab should show single WS connection to: ws://localhost:8000/api/v1/ws/connect?channel=general
+# Connection should stay open (not constantly reconnecting)
+```
+
+**Common Issues:**
+- **Connection Spam**: If you see multiple rapid WebSocket connections, old individual endpoints may still be registered
+  - Solution: Verify only `websocket_enhanced.router` is included in `/backend/app/api/v1/router.py`
+- **"Reconnecting..." Status**: WebSocket connection failing
+  - Check backend is running on port 8000
+  - Verify Redis is running (WebSocket manager needs it)
+  - Clear browser cache and restart frontend
+- **Messages Not Received**: Channel subscription issues
+  - Check browser console for subscription/unsubscription messages
+  - Verify message handlers are properly registered

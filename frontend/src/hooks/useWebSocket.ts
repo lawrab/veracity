@@ -45,10 +45,11 @@ export function useWebSocket(
   channel: string = 'general',
   options: WebSocketOptions = {}
 ): UseWebSocketReturn {
-  // TEMPORARY: Return a disabled WebSocket hook to stop connection spam
+  // TEMPORARY: Return disabled WebSocket to prevent connection spam
+  // The optimization attempts didn't solve the rapid connect/disconnect issue
   const [lastMessage] = useState<WebSocketMessage | null>(null);
   const [readyState] = useState<WebSocketState>(WebSocketState.CLOSED);
-  
+
   return {
     sendMessage: () => { console.log('WebSocket sendMessage disabled'); },
     lastMessage,
