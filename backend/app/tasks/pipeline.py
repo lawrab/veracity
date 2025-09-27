@@ -277,11 +277,11 @@ async def _async_score_trust(story_ids: list[str] | None) -> dict:
                     stories_scored += 1
 
                     # Send WebSocket update
-                    await websocket_manager.broadcast_trust_score_update({
-                        "story_id": str(story.id),
-                        "trust_score": trust_data["score_percentage"],
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                    })
+                    await websocket_manager.broadcast_trust_score_update(
+                        story_id=str(story.id),
+                        trust_score=trust_data["score_percentage"],
+                        signals=trust_data.get("signals", [])
+                    )
 
             except Exception:
                 logger.exception(f"Failed to score story {story.id}")
