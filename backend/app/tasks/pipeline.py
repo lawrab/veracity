@@ -16,12 +16,11 @@ from sqlalchemy.orm import sessionmaker
 from app.core.celery_app import celery_app
 from app.core.config import settings
 from app.core.database import get_mongodb_db
-from app.models.story import Story
-from app.schemas.story import StoryCreate
-from app.schemas.trust import TrustScoreUpdate
+from app.models.sql_models import Story
+from app.schemas.story import StoryCreate, StoryResponse
 from app.services.ingestion.reddit_collector import RedditCollector
 from app.services.story_service import StoryService
-from app.services.trust_scoring.trust_engine import TrustScoringEngine
+from app.services.scoring.trust_scorer import TrustScorer
 from app.services.websocket_manager import websocket_manager
 
 logger = get_task_logger(__name__)
@@ -236,39 +235,40 @@ async def _async_score_trust(story_ids: list[str] | None) -> dict:
         if not stories:
             return {"stories_scored": 0}
 
-        # Initialize trust engine
-        engine = TrustScoringEngine(db)
+        # Initialize trust scorer
+        scorer = TrustScorer()
         stories_scored = 0
 
         for story in stories:
             try:
+                # Convert to StoryResponse for scorer
+                story_response = StoryResponse(
+                    id=story.id,
+                    title=story.title,
+                    description=story.description,
+                    category=story.category,
+                    trust_score=story.trust_score,
+                    velocity=story.velocity,
+                    geographic_spread=story.geographic_spread,
+                    first_seen_at=story.first_seen_at,
+                    last_updated_at=story.last_updated_at,
+                    created_at=story.created_at,
+                )
+
                 # Calculate comprehensive trust score
-                trust_data = await engine.calculate_trust_score(story.id)
+                trust_data = await scorer.calculate_score(story_response)
 
-                if trust_data:
-                    # Update story with new trust score
-                    story.trust_score = trust_data.overall_score
+                if trust_data and trust_data.get("score"):
+                    # Update story with new trust score (convert from 0-1 to 0-100)
+                    story.trust_score = trust_data["score"] * 100
                     story.updated_at = datetime.now(timezone.utc)
-
-                    # Store trust score history
-                    await engine.store_trust_score(
-                        TrustScoreUpdate(
-                            story_id=story.id,
-                            overall_score=trust_data.overall_score,
-                            source_credibility=trust_data.source_credibility,
-                            content_consistency=trust_data.content_consistency,
-                            social_verification=trust_data.social_verification,
-                            expert_validation=trust_data.expert_validation,
-                            factors=trust_data.factors,
-                        )
-                    )
 
                     stories_scored += 1
 
                     # Send WebSocket update
                     await websocket_manager.broadcast_trust_score_update({
                         "story_id": str(story.id),
-                        "trust_score": trust_data.overall_score,
+                        "trust_score": trust_data["score_percentage"],
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     })
 

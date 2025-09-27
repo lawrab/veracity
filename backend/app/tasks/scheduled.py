@@ -15,8 +15,7 @@ from sqlalchemy.orm import sessionmaker
 from app.core.celery_app import celery_app
 from app.core.config import settings
 from app.core.database import get_mongodb_db
-from app.models.story import Story
-from app.models.trust import TrustScore
+from app.models.sql_models import Story, TrustSignal
 from app.tasks.pipeline import (
     ingest_reddit_data,
     process_posts_to_stories,
@@ -150,7 +149,7 @@ async def _async_cleanup_old_data():
             # Delete trust score history older than 14 days
             trust_cutoff = datetime.now(timezone.utc) - timedelta(days=14)
             result = await db.execute(
-                delete(TrustScore).where(TrustScore.calculated_at < trust_cutoff)
+                delete(TrustSignal).where(TrustSignal.calculated_at < trust_cutoff)
             )
             cleanup_stats["old_trust_scores_deleted"] = result.rowcount
 
