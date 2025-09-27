@@ -29,19 +29,23 @@ logger = get_task_logger(__name__)
 
 
 @celery_app.task(bind=True, name="pipeline.ingest_reddit")
-def ingest_reddit_data(self, subreddits: list[str] | None = None, limit: int = 100) -> dict:
+def ingest_reddit_data(
+    self, subreddits: list[str] | None = None, limit: int = 100
+) -> dict:
     """
     Ingest data from Reddit subreddits.
-    
+
     Args:
         subreddits: List of subreddit names to collect from
         limit: Maximum number of posts per subreddit
-    
+
     Returns:
         Dictionary with ingestion results
     """
     try:
-        logger.info(f"Starting Reddit ingestion for {subreddits or 'default subreddits'}")
+        logger.info(
+            f"Starting Reddit ingestion for {subreddits or 'default subreddits'}"
+        )
 
         # Run async code in sync context
         result = asyncio.run(_async_ingest_reddit(subreddits, limit))
@@ -63,6 +67,7 @@ async def _async_ingest_reddit(subreddits: list[str] | None, limit: int) -> dict
     """Async helper for Reddit ingestion."""
     # Initialize database connections for Celery context
     from app.core.database import init_databases
+
     await init_databases()
 
     default_subreddits = ["worldnews", "technology", "science", "politics", "health"]
@@ -72,8 +77,7 @@ async def _async_ingest_reddit(subreddits: list[str] | None, limit: int) -> dict
     await collector.initialize()
 
     all_posts = await collector.collect_trending_posts(
-        subreddits=subreddits,
-        limit=limit
+        subreddits=subreddits, limit=limit
     )
 
     if all_posts:
@@ -90,10 +94,10 @@ async def _async_ingest_reddit(subreddits: list[str] | None, limit: int) -> dict
 def process_posts_to_stories(self, limit: int = 50) -> dict:
     """
     Process raw posts from MongoDB into structured stories in PostgreSQL.
-    
+
     Args:
         limit: Maximum number of posts to process
-    
+
     Returns:
         Dictionary with processing results
     """
@@ -119,15 +123,18 @@ async def _async_process_posts(limit: int) -> dict:
     """Async helper for post processing."""
     # Initialize database connections for Celery context
     from app.core.database import init_databases
+
     await init_databases()
 
     mongo_db = get_mongodb_db()
     collection = mongo_db.social_media_posts
 
     # Mark posts as being processed to avoid duplicates
-    posts = await collection.find(
-        {"processed": {"$ne": True}}
-    ).limit(limit).to_list(length=limit)
+    posts = (
+        await collection.find({"processed": {"$ne": True}})
+        .limit(limit)
+        .to_list(length=limit)
+    )
 
     if not posts:
         return {"stories_created": 0, "story_ids": []}
@@ -135,7 +142,7 @@ async def _async_process_posts(limit: int) -> dict:
     # Create new engine and session for this task to avoid event loop issues
     engine = create_async_engine(settings.POSTGRES_URL, echo=False)
     SessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    
+
     try:
         async with SessionLocal() as db:
             story_service = StoryService(db)
@@ -164,7 +171,9 @@ async def _async_process_posts(limit: int) -> dict:
                         trust_score=50.0,  # Initial neutral score
                         velocity=velocity,
                         first_seen_at=datetime.fromtimestamp(
-                            post.get("created_utc", datetime.now(timezone.utc).timestamp()),
+                            post.get(
+                                "created_utc", datetime.now(timezone.utc).timestamp()
+                            ),
                             tz=timezone.utc,
                         ),
                     )
@@ -176,16 +185,18 @@ async def _async_process_posts(limit: int) -> dict:
                     # Mark post as processed
                     await collection.update_one(
                         {"_id": post["_id"]},
-                        {"$set": {"processed": True, "story_id": str(story.id)}}
+                        {"$set": {"processed": True, "story_id": str(story.id)}},
                     )
 
                     # Send WebSocket update
-                    await websocket_manager.broadcast_story_update({
-                        "type": "story_created",
-                        "story_id": str(story.id),
-                        "title": story.title,
-                        "category": story.category,
-                    })
+                    await websocket_manager.broadcast_story_update(
+                        {
+                            "type": "story_created",
+                            "story_id": str(story.id),
+                            "title": story.title,
+                            "category": story.category,
+                        }
+                    )
 
                 except Exception:
                     logger.exception(
@@ -209,15 +220,17 @@ async def _async_process_posts(limit: int) -> dict:
 def score_stories_trust(self, story_ids: list[str] | None = None) -> dict:
     """
     Calculate trust scores for stories.
-    
+
     Args:
         story_ids: List of story IDs to score, or None for all unscored
-    
+
     Returns:
         Dictionary with scoring results
     """
     try:
-        logger.info(f"Starting trust scoring for {len(story_ids) if story_ids else 'all'} stories")
+        logger.info(
+            f"Starting trust scoring for {len(story_ids) if story_ids else 'all'} stories"
+        )
 
         result = asyncio.run(_async_score_trust(story_ids))
 
@@ -234,18 +247,20 @@ async def _async_score_trust(story_ids: list[str] | None) -> dict:
     """Async helper for trust scoring."""
     # Initialize database connections for Celery context
     from app.core.database import init_databases
+
     await init_databases()
 
     # Create new engine and session for this task to avoid event loop issues
     engine = create_async_engine(settings.POSTGRES_URL, echo=False)
     SessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    
+
     try:
         async with SessionLocal() as db:
             # Get stories to score
             query = select(Story)
             if story_ids:
                 from uuid import UUID
+
                 query = query.where(Story.id.in_([UUID(sid) for sid in story_ids]))
             else:
                 # Score stories with default trust score
@@ -291,7 +306,7 @@ async def _async_score_trust(story_ids: list[str] | None) -> dict:
                         await websocket_manager.broadcast_trust_score_update(
                             story_id=str(story.id),
                             trust_score=trust_data["score_percentage"],
-                            signals=trust_data.get("signals", [])
+                            signals=trust_data.get("signals", []),
                         )
 
                 except Exception:
@@ -313,10 +328,10 @@ async def _async_score_trust(story_ids: list[str] | None) -> dict:
 def run_full_pipeline(subreddits: list[str] | None = None) -> str:
     """
     Run the complete data pipeline: ingest → process → score.
-    
+
     Args:
         subreddits: Optional list of subreddits to monitor
-    
+
     Returns:
         Pipeline execution ID
     """
@@ -325,7 +340,9 @@ def run_full_pipeline(subreddits: list[str] | None = None) -> str:
     # Create pipeline chain - use immutable signatures to pass fixed parameters
     pipeline = chain(
         ingest_reddit_data.s(subreddits=subreddits, limit=100),
-        process_posts_to_stories.si(limit=50),  # Use .si() for immutable signature with fixed limit
+        process_posts_to_stories.si(
+            limit=50
+        ),  # Use .si() for immutable signature with fixed limit
         score_stories_trust.si(),  # Use .si() for immutable signature
     )
 
@@ -339,11 +356,11 @@ def run_full_pipeline(subreddits: list[str] | None = None) -> str:
 def analyze_url(url: str, user_id: str | None = None) -> dict:
     """
     Analyze a specific URL submitted by a user.
-    
+
     Args:
         url: URL to analyze
         user_id: Optional user ID who submitted the URL
-    
+
     Returns:
         Analysis results
     """
@@ -363,6 +380,7 @@ async def _async_analyze_url(url: str, user_id: str | None) -> dict:  # noqa: AR
     """Async helper for URL analysis."""
     # Initialize database connections for Celery context
     from app.core.database import init_databases
+
     await init_databases()
 
     # This would integrate with news article parsing and fact-checking

@@ -39,14 +39,20 @@ def scheduled_reddit_ingestion():
 
     # Define subreddits to monitor
     monitored_subreddits = [
-        "worldnews", "technology", "science", "politics",
-        "health", "economics", "environment", "AskReddit"
+        "worldnews",
+        "technology",
+        "science",
+        "politics",
+        "health",
+        "economics",
+        "environment",
+        "AskReddit",
     ]
 
     # Trigger ingestion task
     result = ingest_reddit_data.delay(
         subreddits=monitored_subreddits,
-        limit=50  # Limit per subreddit to avoid overwhelming
+        limit=50,  # Limit per subreddit to avoid overwhelming
     )
 
     logger.info(f"Scheduled ingestion started with task ID: {result.id}")
@@ -117,10 +123,9 @@ async def _async_cleanup_old_data():
         cutoff_timestamp = cutoff_date.timestamp()
 
         # Delete old processed posts
-        result = await collection.delete_many({
-            "created_utc": {"$lt": cutoff_timestamp},
-            "processed": True
-        })
+        result = await collection.delete_many(
+            {"created_utc": {"$lt": cutoff_timestamp}, "processed": True}
+        )
         cleanup_stats["mongodb_posts_deleted"] = result.deleted_count
 
     except Exception:
@@ -136,7 +141,7 @@ async def _async_cleanup_old_data():
                 select(Story).where(
                     Story.created_at < cutoff_date,
                     Story.trust_score < 30.0,  # Low trust
-                    Story.velocity < 10.0  # Low engagement
+                    Story.velocity < 10.0,  # Low engagement
                 )
             )
             stories_to_delete = old_stories.scalars().all()
@@ -186,10 +191,10 @@ async def _async_detect_trends():
         recent_time = datetime.now(timezone.utc) - timedelta(hours=1)
 
         trending_stories = await db.execute(
-            select(Story).where(
-                Story.created_at > recent_time,
-                Story.velocity > 50.0
-            ).order_by(Story.velocity.desc()).limit(20)
+            select(Story)
+            .where(Story.created_at > recent_time, Story.velocity > 50.0)
+            .order_by(Story.velocity.desc())
+            .limit(20)
         )
 
         trends = [
@@ -234,9 +239,7 @@ async def _async_rescore_stories():
         update_cutoff = datetime.now(timezone.utc) - timedelta(hours=2)
 
         stories_to_rescore = await db.execute(
-            select(Story).where(
-                Story.updated_at < update_cutoff
-            ).limit(50)
+            select(Story).where(Story.updated_at < update_cutoff).limit(50)
         )
 
         story_ids = [str(story.id) for story in stories_to_rescore.scalars()]

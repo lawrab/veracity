@@ -33,7 +33,7 @@ router = APIRouter()
 async def trigger_pipeline(request: PipelineTriggerRequest):
     """
     Trigger the full data processing pipeline.
-    
+
     This will:
     1. Ingest data from specified sources
     2. Process posts into stories
@@ -60,7 +60,7 @@ async def trigger_pipeline(request: PipelineTriggerRequest):
 async def analyze_news_url(request: URLAnalysisRequest):
     """
     Submit a URL for trustability analysis.
-    
+
     This will:
     1. Extract content from the URL
     2. Search for related social media discussions

@@ -56,7 +56,9 @@ class TaskStatus(BaseModel):
     message: str | None = None
     current: int | None = Field(default=None, description="Current progress")
     total: int | None = Field(default=None, description="Total items to process")
-    result: dict[str, Any] | None = Field(default=None, description="Task result if completed")
+    result: dict[str, Any] | None = Field(
+        default=None, description="Task result if completed"
+    )
     error: str | None = Field(default=None, description="Error message if failed")
 
 
