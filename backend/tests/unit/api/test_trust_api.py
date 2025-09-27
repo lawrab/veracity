@@ -436,7 +436,7 @@ class TestBulkCalculateTrustScores:
 
         story_id_1 = str(uuid.uuid4())
         story_id_2 = str(uuid.uuid4())
-        
+
         mock_story_service = AsyncMock()
         # First story exists, second doesn't
         mock_story_service.get_story_by_id.side_effect = [
