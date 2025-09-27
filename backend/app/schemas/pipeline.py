@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, HttpUrl
 
 class PipelineTriggerRequest(BaseModel):
     """Request to trigger pipeline execution."""
-    
+
     subreddits: list[str] | None = Field(
         default=None,
         description="List of subreddits to monitor. If None, uses defaults.",
@@ -27,7 +27,7 @@ class PipelineTriggerRequest(BaseModel):
 
 class URLAnalysisRequest(BaseModel):
     """Request to analyze a specific URL."""
-    
+
     url: HttpUrl = Field(
         description="URL to analyze for trustability",
         examples=["https://example.com/news/article"],
@@ -40,7 +40,7 @@ class URLAnalysisRequest(BaseModel):
 
 class PipelineResponse(BaseModel):
     """Response from pipeline operations."""
-    
+
     task_id: str = Field(description="Celery task ID for tracking")
     status: str = Field(description="Current status of the task")
     message: str = Field(description="Human-readable status message")
@@ -48,7 +48,7 @@ class PipelineResponse(BaseModel):
 
 class TaskStatus(BaseModel):
     """Status of a specific task."""
-    
+
     task_id: str
     status: str = Field(
         description="Task status: PENDING, STARTED, SUCCESS, FAILURE, RETRY, REVOKED"
@@ -62,7 +62,7 @@ class TaskStatus(BaseModel):
 
 class PipelineStatus(BaseModel):
     """Overall pipeline system status."""
-    
+
     workers_online: int = Field(description="Number of Celery workers online")
     active_tasks: int = Field(description="Number of currently running tasks")
     scheduled_tasks: int = Field(description="Number of scheduled tasks")

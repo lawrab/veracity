@@ -6,9 +6,8 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
-from typing import Any
 
-from celery import chain, group
+from celery import chain
 from celery.utils.log import get_task_logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -46,20 +45,20 @@ def ingest_reddit_data(self, subreddits: list[str] | None = None, limit: int = 1
     """
     try:
         logger.info(f"Starting Reddit ingestion for {subreddits or 'default subreddits'}")
-        
+
         # Run async code in sync context
         result = asyncio.run(_async_ingest_reddit(subreddits, limit))
-        
+
         logger.info(f"Ingested {result['posts_collected']} posts from Reddit")
-        
+
         # Trigger next step in pipeline automatically
         if result["posts_collected"] > 0:
             process_posts_to_stories.delay()
-        
+
         return result
-        
+
     except Exception as e:
-        logger.error(f"Reddit ingestion failed: {e}")
+        logger.exception("Reddit ingestion failed")
         self.retry(exc=e, countdown=60)
 
 
@@ -67,19 +66,19 @@ async def _async_ingest_reddit(subreddits: list[str] | None, limit: int) -> dict
     """Async helper for Reddit ingestion."""
     default_subreddits = ["worldnews", "technology", "science", "politics", "health"]
     subreddits = subreddits or default_subreddits
-    
+
     collector = RedditCollector()
     collector.db = get_mongodb_db()
     await collector.initialize()
-    
+
     all_posts = await collector.collect_trending_posts(
-        subreddits=subreddits, 
+        subreddits=subreddits,
         limit=limit
     )
-    
+
     if all_posts:
         await collector.store_posts(all_posts)
-    
+
     return {
         "posts_collected": len(all_posts),
         "subreddits": subreddits,
@@ -100,19 +99,19 @@ def process_posts_to_stories(self, limit: int = 50) -> dict:
     """
     try:
         logger.info(f"Starting post processing (limit: {limit})")
-        
+
         result = asyncio.run(_async_process_posts(limit))
-        
+
         logger.info(f"Created {result['stories_created']} stories")
-        
+
         # Trigger trust scoring for new stories
         if result["stories_created"] > 0:
             score_stories_trust.delay(result["story_ids"])
-        
+
         return result
-        
+
     except Exception as e:
-        logger.error(f"Post processing failed: {e}")
+        logger.exception("Post processing failed")
         self.retry(exc=e, countdown=60)
 
 
@@ -120,20 +119,20 @@ async def _async_process_posts(limit: int) -> dict:
     """Async helper for post processing."""
     mongo_db = get_mongodb_db()
     collection = mongo_db.social_media_posts
-    
+
     # Mark posts as being processed to avoid duplicates
     posts = await collection.find(
         {"processed": {"$ne": True}}
     ).limit(limit).to_list(length=limit)
-    
+
     if not posts:
         return {"stories_created": 0, "story_ids": []}
-    
+
     async with AsyncSessionLocal() as db:
         story_service = StoryService(db)
         stories_created = 0
         story_ids = []
-        
+
         for post in posts:
             try:
                 # Check if story already exists for this content
@@ -142,13 +141,13 @@ async def _async_process_posts(limit: int) -> dict:
                 )
                 if existing.scalar_one_or_none():
                     continue
-                
+
                 # Create story from post
                 title = post.get("title", post.get("content", "Untitled"))[:200]
                 score = post.get("score", 0)
                 comments = post.get("num_comments", 1)
                 velocity = score / max(1, comments)
-                
+
                 story_data = StoryCreate(
                     title=title,
                     description=post.get("content", "")[:1000],
@@ -160,17 +159,17 @@ async def _async_process_posts(limit: int) -> dict:
                         tz=timezone.utc,
                     ),
                 )
-                
+
                 story = await story_service.create_story(story_data)
                 stories_created += 1
                 story_ids.append(str(story.id))
-                
+
                 # Mark post as processed
                 await collection.update_one(
                     {"_id": post["_id"]},
                     {"$set": {"processed": True, "story_id": str(story.id)}}
                 )
-                
+
                 # Send WebSocket update
                 await websocket_manager.broadcast_story_update({
                     "type": "story_created",
@@ -178,13 +177,15 @@ async def _async_process_posts(limit: int) -> dict:
                     "title": story.title,
                     "category": story.category,
                 })
-                
-            except Exception as e:
-                logger.error(f"Failed to create story from post {post.get('id')}: {e}")
+
+            except Exception:
+                logger.exception(
+                    f"Failed to create story from post {post.get('id')}"
+                )
                 continue
-        
+
         await db.commit()
-    
+
     return {
         "stories_created": stories_created,
         "story_ids": story_ids,
@@ -205,15 +206,15 @@ def score_stories_trust(self, story_ids: list[str] | None = None) -> dict:
     """
     try:
         logger.info(f"Starting trust scoring for {len(story_ids) if story_ids else 'all'} stories")
-        
+
         result = asyncio.run(_async_score_trust(story_ids))
-        
+
         logger.info(f"Scored {result['stories_scored']} stories")
-        
+
         return result
-        
+
     except Exception as e:
-        logger.error(f"Trust scoring failed: {e}")
+        logger.exception("Trust scoring failed")
         self.retry(exc=e, countdown=60)
 
 
@@ -228,27 +229,27 @@ async def _async_score_trust(story_ids: list[str] | None) -> dict:
         else:
             # Score stories with default trust score
             query = query.where(Story.trust_score == 50.0)
-        
+
         result = await db.execute(query)
         stories = result.scalars().all()
-        
+
         if not stories:
             return {"stories_scored": 0}
-        
+
         # Initialize trust engine
         engine = TrustScoringEngine(db)
         stories_scored = 0
-        
+
         for story in stories:
             try:
                 # Calculate comprehensive trust score
                 trust_data = await engine.calculate_trust_score(story.id)
-                
+
                 if trust_data:
                     # Update story with new trust score
                     story.trust_score = trust_data.overall_score
                     story.updated_at = datetime.now(timezone.utc)
-                    
+
                     # Store trust score history
                     await engine.store_trust_score(
                         TrustScoreUpdate(
@@ -261,22 +262,22 @@ async def _async_score_trust(story_ids: list[str] | None) -> dict:
                             factors=trust_data.factors,
                         )
                     )
-                    
+
                     stories_scored += 1
-                    
+
                     # Send WebSocket update
                     await websocket_manager.broadcast_trust_score_update({
                         "story_id": str(story.id),
                         "trust_score": trust_data.overall_score,
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     })
-                    
-            except Exception as e:
-                logger.error(f"Failed to score story {story.id}: {e}")
+
+            except Exception:
+                logger.exception(f"Failed to score story {story.id}")
                 continue
-        
+
         await db.commit()
-    
+
     return {
         "stories_scored": stories_scored,
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -295,17 +296,17 @@ def run_full_pipeline(subreddits: list[str] | None = None) -> str:
         Pipeline execution ID
     """
     logger.info("Starting full pipeline execution")
-    
+
     # Create pipeline chain
     pipeline = chain(
         ingest_reddit_data.s(subreddits=subreddits, limit=100),
         process_posts_to_stories.s(),
         score_stories_trust.s(),
     )
-    
+
     # Execute pipeline
     result = pipeline.apply_async()
-    
+
     return str(result.id)
 
 
@@ -323,17 +324,17 @@ def analyze_url(url: str, user_id: str | None = None) -> dict:
     """
     try:
         logger.info(f"Analyzing URL: {url}")
-        
+
         result = asyncio.run(_async_analyze_url(url, user_id))
-        
+
         return result
-        
-    except Exception as e:
-        logger.error(f"URL analysis failed: {e}")
+
+    except Exception:
+        logger.exception("URL analysis failed")
         raise
 
 
-async def _async_analyze_url(url: str, user_id: str | None) -> dict:
+async def _async_analyze_url(url: str, user_id: str | None) -> dict:  # noqa: ARG001
     """Async helper for URL analysis."""
     # This would integrate with news article parsing and fact-checking
     # For now, return a placeholder

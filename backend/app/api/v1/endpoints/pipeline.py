@@ -42,15 +42,17 @@ async def trigger_pipeline(request: PipelineTriggerRequest):
     try:
         # Start the pipeline
         task = run_full_pipeline.delay(subreddits=request.subreddits)
-        
+
         return PipelineResponse(
             task_id=str(task.id),
             status="started",
-            message=f"Pipeline triggered for {len(request.subreddits or [])} subreddits",
+            message=(
+                f"Pipeline triggered for {len(request.subreddits or [])} subreddits"
+            ),
         )
-        
+
     except Exception as e:
-        logger.error(f"Failed to trigger pipeline: {e}")
+        logger.exception("Failed to trigger pipeline")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -67,15 +69,15 @@ async def analyze_news_url(request: URLAnalysisRequest):
     try:
         # Trigger URL analysis
         task = analyze_url.delay(url=request.url, user_id=request.user_id)
-        
+
         return PipelineResponse(
             task_id=str(task.id),
             status="started",
             message=f"Analysis started for URL: {request.url}",
         )
-        
+
     except Exception as e:
-        logger.error(f"Failed to analyze URL: {e}")
+        logger.exception("Failed to analyze URL")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -85,13 +87,13 @@ async def get_task_status(task_id: str):
     try:
         # Get task result
         result = AsyncResult(task_id, app=celery_app)
-        
+
         status = result.status
         response: dict[str, Any] = {
             "task_id": task_id,
             "status": status,
         }
-        
+
         if status == "PENDING":
             response["message"] = "Task is waiting to be processed"
         elif status == "STARTED":
@@ -106,11 +108,11 @@ async def get_task_status(task_id: str):
             response["error"] = str(result.info)
         else:
             response["message"] = f"Unknown status: {status}"
-        
+
         return TaskStatus(**response)
-        
+
     except Exception as e:
-        logger.error(f"Failed to get task status: {e}")
+        logger.exception("Failed to get task status")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -122,32 +124,32 @@ async def get_pipeline_status():
         inspect = celery_app.control.inspect()
         active_tasks = inspect.active()
         scheduled_tasks = inspect.scheduled()
-        
+
         # Count active tasks
         active_count = 0
         if active_tasks:
             for worker, tasks in active_tasks.items():
                 active_count += len(tasks)
-        
+
         # Count scheduled tasks
         scheduled_count = 0
         if scheduled_tasks:
             for worker, tasks in scheduled_tasks.items():
                 scheduled_count += len(tasks)
-        
+
         # Get worker status
         stats = inspect.stats()
         workers_online = len(stats) if stats else 0
-        
+
         return PipelineStatus(
             workers_online=workers_online,
             active_tasks=active_count,
             scheduled_tasks=scheduled_count,
             pipeline_enabled=workers_online > 0,
         )
-        
-    except Exception as e:
-        logger.error(f"Failed to get pipeline status: {e}")
+
+    except Exception:
+        logger.exception("Failed to get pipeline status")
         # Return degraded status if Celery is not available
         return PipelineStatus(
             workers_online=0,
@@ -162,15 +164,15 @@ async def trigger_cleanup():
     """Manually trigger database cleanup task."""
     try:
         task = cleanup_old_data.delay()
-        
+
         return PipelineResponse(
             task_id=str(task.id),
             status="started",
             message="Database cleanup started",
         )
-        
+
     except Exception as e:
-        logger.error(f"Failed to trigger cleanup: {e}")
+        logger.exception("Failed to trigger cleanup")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -179,15 +181,15 @@ async def trigger_rescoring():
     """Manually trigger trust score recalculation for old stories."""
     try:
         task = rescore_old_stories.delay()
-        
+
         return PipelineResponse(
             task_id=str(task.id),
             status="started",
             message="Story re-scoring started",
         )
-        
+
     except Exception as e:
-        logger.error(f"Failed to trigger re-scoring: {e}")
+        logger.exception("Failed to trigger re-scoring")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -196,15 +198,15 @@ async def trigger_trend_detection():
     """Manually trigger trend detection."""
     try:
         task = detect_emerging_trends.delay()
-        
+
         return PipelineResponse(
             task_id=str(task.id),
             status="started",
             message="Trend detection started",
         )
-        
+
     except Exception as e:
-        logger.error(f"Failed to trigger trend detection: {e}")
+        logger.exception("Failed to trigger trend detection")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -214,13 +216,13 @@ async def cancel_task(task_id: str):
     try:
         result = AsyncResult(task_id, app=celery_app)
         result.revoke(terminate=True)
-        
+
         return {
             "task_id": task_id,
             "status": "cancelled",
             "message": "Task cancellation requested",
         }
-        
+
     except Exception as e:
-        logger.error(f"Failed to cancel task: {e}")
+        logger.exception("Failed to cancel task")
         raise HTTPException(status_code=500, detail=str(e))
