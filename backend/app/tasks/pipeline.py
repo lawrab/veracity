@@ -25,9 +25,7 @@ from app.services.websocket_manager import websocket_manager
 
 logger = get_task_logger(__name__)
 
-# Create async engine for Celery tasks
-engine = create_async_engine(settings.POSTGRES_URL, echo=False)
-AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+# Database connection will be created per task to avoid event loop issues
 
 
 @celery_app.task(bind=True, name="pipeline.ingest_reddit")
@@ -134,69 +132,77 @@ async def _async_process_posts(limit: int) -> dict:
     if not posts:
         return {"stories_created": 0, "story_ids": []}
 
-    async with AsyncSessionLocal() as db:
-        story_service = StoryService(db)
-        stories_created = 0
-        story_ids = []
+    # Create new engine and session for this task to avoid event loop issues
+    engine = create_async_engine(settings.POSTGRES_URL, echo=False)
+    SessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    
+    try:
+        async with SessionLocal() as db:
+            story_service = StoryService(db)
+            stories_created = 0
+            story_ids = []
 
-        for post in posts:
-            try:
-                # Check if story already exists for this content
-                existing = await db.execute(
-                    select(Story).where(Story.title == post.get("title", "")[:200])
-                )
-                if existing.scalar_one_or_none():
+            for post in posts:
+                try:
+                    # Check if story already exists for this content
+                    existing = await db.execute(
+                        select(Story).where(Story.title == post.get("title", "")[:200])
+                    )
+                    if existing.scalar_one_or_none():
+                        continue
+
+                    # Create story from post
+                    title = post.get("title", post.get("content", "Untitled"))[:200]
+                    score = post.get("score", 0)
+                    comments = post.get("num_comments", 1)
+                    velocity = score / max(1, comments)
+
+                    story_data = StoryCreate(
+                        title=title,
+                        description=post.get("content", "")[:1000],
+                        category=post.get("subreddit", "general"),
+                        trust_score=50.0,  # Initial neutral score
+                        velocity=velocity,
+                        first_seen_at=datetime.fromtimestamp(
+                            post.get("created_utc", datetime.now(timezone.utc).timestamp()),
+                            tz=timezone.utc,
+                        ),
+                    )
+
+                    story = await story_service.create_story(story_data)
+                    stories_created += 1
+                    story_ids.append(str(story.id))
+
+                    # Mark post as processed
+                    await collection.update_one(
+                        {"_id": post["_id"]},
+                        {"$set": {"processed": True, "story_id": str(story.id)}}
+                    )
+
+                    # Send WebSocket update
+                    await websocket_manager.broadcast_story_update({
+                        "type": "story_created",
+                        "story_id": str(story.id),
+                        "title": story.title,
+                        "category": story.category,
+                    })
+
+                except Exception:
+                    logger.exception(
+                        f"Failed to create story from post {post.get('id')}"
+                    )
                     continue
 
-                # Create story from post
-                title = post.get("title", post.get("content", "Untitled"))[:200]
-                score = post.get("score", 0)
-                comments = post.get("num_comments", 1)
-                velocity = score / max(1, comments)
+            await db.commit()
 
-                story_data = StoryCreate(
-                    title=title,
-                    description=post.get("content", "")[:1000],
-                    category=post.get("subreddit", "general"),
-                    trust_score=50.0,  # Initial neutral score
-                    velocity=velocity,
-                    first_seen_at=datetime.fromtimestamp(
-                        post.get("created_utc", datetime.now(timezone.utc).timestamp()),
-                        tz=timezone.utc,
-                    ),
-                )
-
-                story = await story_service.create_story(story_data)
-                stories_created += 1
-                story_ids.append(str(story.id))
-
-                # Mark post as processed
-                await collection.update_one(
-                    {"_id": post["_id"]},
-                    {"$set": {"processed": True, "story_id": str(story.id)}}
-                )
-
-                # Send WebSocket update
-                await websocket_manager.broadcast_story_update({
-                    "type": "story_created",
-                    "story_id": str(story.id),
-                    "title": story.title,
-                    "category": story.category,
-                })
-
-            except Exception:
-                logger.exception(
-                    f"Failed to create story from post {post.get('id')}"
-                )
-                continue
-
-        await db.commit()
-
-    return {
-        "stories_created": stories_created,
-        "story_ids": story_ids,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    }
+            return {
+                "stories_created": stories_created,
+                "story_ids": story_ids,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+    finally:
+        # Dispose engine to clean up connections
+        await engine.dispose()
 
 
 @celery_app.task(bind=True, name="pipeline.score_trust")
@@ -230,69 +236,77 @@ async def _async_score_trust(story_ids: list[str] | None) -> dict:
     from app.core.database import init_databases
     await init_databases()
 
-    async with AsyncSessionLocal() as db:
-        # Get stories to score
-        query = select(Story)
-        if story_ids:
-            from uuid import UUID
-            query = query.where(Story.id.in_([UUID(sid) for sid in story_ids]))
-        else:
-            # Score stories with default trust score
-            query = query.where(Story.trust_score == 50.0)
+    # Create new engine and session for this task to avoid event loop issues
+    engine = create_async_engine(settings.POSTGRES_URL, echo=False)
+    SessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    
+    try:
+        async with SessionLocal() as db:
+            # Get stories to score
+            query = select(Story)
+            if story_ids:
+                from uuid import UUID
+                query = query.where(Story.id.in_([UUID(sid) for sid in story_ids]))
+            else:
+                # Score stories with default trust score
+                query = query.where(Story.trust_score == 50.0)
 
-        result = await db.execute(query)
-        stories = result.scalars().all()
+            result = await db.execute(query)
+            stories = result.scalars().all()
 
-        if not stories:
-            return {"stories_scored": 0}
+            if not stories:
+                return {"stories_scored": 0}
 
-        # Initialize trust scorer
-        scorer = TrustScorer()
-        stories_scored = 0
+            # Initialize trust scorer
+            scorer = TrustScorer()
+            stories_scored = 0
 
-        for story in stories:
-            try:
-                # Convert to StoryResponse for scorer
-                story_response = StoryResponse(
-                    id=story.id,
-                    title=story.title,
-                    description=story.description,
-                    category=story.category,
-                    trust_score=story.trust_score,
-                    velocity=story.velocity,
-                    geographic_spread=story.geographic_spread,
-                    first_seen_at=story.first_seen_at,
-                    last_updated_at=story.last_updated_at,
-                    created_at=story.created_at,
-                )
-
-                # Calculate comprehensive trust score
-                trust_data = await scorer.calculate_score(story_response)
-
-                if trust_data and trust_data.get("score"):
-                    # Update story with new trust score (convert from 0-1 to 0-100)
-                    story.trust_score = trust_data["score"] * 100
-                    story.updated_at = datetime.now(timezone.utc)
-
-                    stories_scored += 1
-
-                    # Send WebSocket update
-                    await websocket_manager.broadcast_trust_score_update(
-                        story_id=str(story.id),
-                        trust_score=trust_data["score_percentage"],
-                        signals=trust_data.get("signals", [])
+            for story in stories:
+                try:
+                    # Convert to StoryResponse for scorer
+                    story_response = StoryResponse(
+                        id=story.id,
+                        title=story.title,
+                        description=story.description,
+                        category=story.category,
+                        trust_score=story.trust_score,
+                        velocity=story.velocity,
+                        geographic_spread=story.geographic_spread,
+                        first_seen_at=story.first_seen_at,
+                        last_updated_at=story.last_updated_at,
+                        created_at=story.created_at,
                     )
 
-            except Exception:
-                logger.exception(f"Failed to score story {story.id}")
-                continue
+                    # Calculate comprehensive trust score
+                    trust_data = await scorer.calculate_score(story_response)
 
-        await db.commit()
+                    if trust_data and trust_data.get("score"):
+                        # Update story with new trust score (convert from 0-1 to 0-100)
+                        story.trust_score = trust_data["score"] * 100
+                        story.updated_at = datetime.now(timezone.utc)
 
-    return {
-        "stories_scored": stories_scored,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    }
+                        stories_scored += 1
+
+                        # Send WebSocket update
+                        await websocket_manager.broadcast_trust_score_update(
+                            story_id=str(story.id),
+                            trust_score=trust_data["score_percentage"],
+                            signals=trust_data.get("signals", [])
+                        )
+
+                except Exception:
+                    logger.exception(f"Failed to score story {story.id}")
+                    continue
+
+            await db.commit()
+
+            return {
+                "stories_scored": stories_scored,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+    finally:
+        # Dispose engine to clean up connections
+        await engine.dispose()
 
 
 @celery_app.task(name="pipeline.run_full_pipeline")
@@ -308,11 +322,11 @@ def run_full_pipeline(subreddits: list[str] | None = None) -> str:
     """
     logger.info("Starting full pipeline execution")
 
-    # Create pipeline chain
+    # Create pipeline chain - use immutable signatures to pass fixed parameters
     pipeline = chain(
         ingest_reddit_data.s(subreddits=subreddits, limit=100),
-        process_posts_to_stories.s(),
-        score_stories_trust.s(),
+        process_posts_to_stories.si(limit=50),  # Use .si() for immutable signature with fixed limit
+        score_stories_trust.si(),  # Use .si() for immutable signature
     )
 
     # Execute pipeline
