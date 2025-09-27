@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
+from uuid import UUID
 
 from celery import chain
 from celery.utils.log import get_task_logger
@@ -15,7 +16,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.celery_app import celery_app
 from app.core.config import settings
-from app.core.database import get_mongodb_db
+from app.core.database import get_mongodb_db, init_databases
 from app.models.sql_models import Story
 from app.schemas.story import StoryCreate, StoryResponse
 from app.services.ingestion.reddit_collector import RedditCollector
@@ -66,8 +67,6 @@ def ingest_reddit_data(
 async def _async_ingest_reddit(subreddits: list[str] | None, limit: int) -> dict:
     """Async helper for Reddit ingestion."""
     # Initialize database connections for Celery context
-    from app.core.database import init_databases
-
     await init_databases()
 
     default_subreddits = ["worldnews", "technology", "science", "politics", "health"]
@@ -122,8 +121,6 @@ def process_posts_to_stories(self, limit: int = 50) -> dict:
 async def _async_process_posts(limit: int) -> dict:
     """Async helper for post processing."""
     # Initialize database connections for Celery context
-    from app.core.database import init_databases
-
     await init_databases()
 
     mongo_db = get_mongodb_db()
@@ -141,10 +138,10 @@ async def _async_process_posts(limit: int) -> dict:
 
     # Create new engine and session for this task to avoid event loop issues
     engine = create_async_engine(settings.POSTGRES_URL, echo=False)
-    SessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    session_local = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     try:
-        async with SessionLocal() as db:
+        async with session_local() as db:
             story_service = StoryService(db)
             stories_created = 0
             story_ids = []
@@ -228,9 +225,8 @@ def score_stories_trust(self, story_ids: list[str] | None = None) -> dict:
         Dictionary with scoring results
     """
     try:
-        logger.info(
-            f"Starting trust scoring for {len(story_ids) if story_ids else 'all'} stories"
-        )
+        count_text = len(story_ids) if story_ids else "all"
+        logger.info(f"Starting trust scoring for {count_text} stories")
 
         result = asyncio.run(_async_score_trust(story_ids))
 
@@ -246,21 +242,17 @@ def score_stories_trust(self, story_ids: list[str] | None = None) -> dict:
 async def _async_score_trust(story_ids: list[str] | None) -> dict:
     """Async helper for trust scoring."""
     # Initialize database connections for Celery context
-    from app.core.database import init_databases
-
     await init_databases()
 
     # Create new engine and session for this task to avoid event loop issues
     engine = create_async_engine(settings.POSTGRES_URL, echo=False)
-    SessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    session_local = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     try:
-        async with SessionLocal() as db:
+        async with session_local() as db:
             # Get stories to score
             query = select(Story)
             if story_ids:
-                from uuid import UUID
-
                 query = query.where(Story.id.in_([UUID(sid) for sid in story_ids]))
             else:
                 # Score stories with default trust score
@@ -367,9 +359,7 @@ def analyze_url(url: str, user_id: str | None = None) -> dict:
     try:
         logger.info(f"Analyzing URL: {url}")
 
-        result = asyncio.run(_async_analyze_url(url, user_id))
-
-        return result
+        return asyncio.run(_async_analyze_url(url, user_id))
 
     except Exception:
         logger.exception("URL analysis failed")
@@ -379,8 +369,6 @@ def analyze_url(url: str, user_id: str | None = None) -> dict:
 async def _async_analyze_url(url: str, user_id: str | None) -> dict:  # noqa: ARG001
     """Async helper for URL analysis."""
     # Initialize database connections for Celery context
-    from app.core.database import init_databases
-
     await init_databases()
 
     # This would integrate with news article parsing and fact-checking

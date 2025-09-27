@@ -27,7 +27,7 @@ celery_app.conf.update(
     task_time_limit=600,  # 10 minutes hard limit
     task_soft_time_limit=540,  # 9 minutes soft limit
     worker_prefetch_multiplier=2,
-    worker_max_tasks_per_child=100,  # Restart worker after 100 tasks to prevent memory leaks
+    worker_max_tasks_per_child=100,  # Restart worker after 100 tasks
 )
 
 # Configure scheduled tasks with Celery Beat
@@ -79,7 +79,8 @@ celery_app.conf.task_annotations = {
 }
 
 # Import task modules to register them (after configuration)
-from app.tasks import (
+# This must come after Celery configuration to avoid circular imports
+from app.tasks import (  # noqa: E402
     pipeline,  # noqa: F401
     scheduled,  # noqa: F401
 )

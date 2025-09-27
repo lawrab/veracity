@@ -128,13 +128,13 @@ async def get_pipeline_status():
         # Count active tasks
         active_count = 0
         if active_tasks:
-            for worker, tasks in active_tasks.items():
+            for tasks in active_tasks.values():
                 active_count += len(tasks)
 
         # Count scheduled tasks
         scheduled_count = 0
         if scheduled_tasks:
-            for worker, tasks in scheduled_tasks.items():
+            for tasks in scheduled_tasks.values():
                 scheduled_count += len(tasks)
 
         # Get worker status

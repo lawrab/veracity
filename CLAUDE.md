@@ -120,6 +120,7 @@ python -m app.main
 pytest tests/
 
 # Code formatting and linting (using ruff - replaces black, isort, flake8)
+# IMPORTANT: ruff is available directly in the nix development environment
 ruff check .                    # Lint code
 ruff check . --fix              # Fix auto-fixable issues
 ruff format .                   # Format code

@@ -3,10 +3,14 @@
 
 from __future__ import annotations
 
+import argparse
 import asyncio
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+import asyncpg
 
 from app.core.logging import get_logger
 
@@ -24,8 +28,6 @@ class TestRunner:
         """Create test database if it doesn't exist."""
         try:
             # Create test database
-            import asyncpg
-
             # Parse connection details from settings
             conn_params = {
                 "host": "localhost",
@@ -59,8 +61,13 @@ class TestRunner:
     def check_services(self) -> bool:
         """Check if required services are running."""
         try:
+            podman_path = shutil.which("podman")
+            if not podman_path:
+                logger.error("podman not found in PATH")
+                return False
+
             result = subprocess.run(
-                ["podman", "ps", "--format", "{{.Names}}"],
+                [podman_path, "ps", "--format", "{{.Names}}"],
                 capture_output=True,
                 text=True,
                 check=True,
@@ -143,7 +150,6 @@ class TestRunner:
         # Clean test database if we created it
         if self.test_db_created:
             try:
-                import asyncpg
 
                 conn = await asyncpg.connect(
                     host="localhost",
@@ -161,7 +167,6 @@ class TestRunner:
 
 async def main():
     """Main test runner entry point."""
-    import argparse
 
     parser = argparse.ArgumentParser(description="Veracity test runner")
     parser.add_argument(
@@ -182,14 +187,15 @@ async def main():
     runner = TestRunner()
 
     # Check services
-    if not args.no_services_check and args.type in ["integration", "e2e", "all"]:
-        if not runner.check_services():
-            return 1
+    if (not args.no_services_check and
+        args.type in ["integration", "e2e", "all"] and
+        not runner.check_services()):
+        return 1
 
     # Setup test database for integration/e2e tests
-    if args.type in ["integration", "e2e", "all", "coverage"]:
-        if not await runner.setup_test_database():
-            return 1
+    if (args.type in ["integration", "e2e", "all", "coverage"] and
+        not await runner.setup_test_database()):
+        return 1
 
     # Run linters if requested
     if args.type == "lint":
