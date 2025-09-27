@@ -108,7 +108,7 @@ api_call "POST" "/ingestion/reddit" "$REDDIT_REQUEST" "Start Reddit data collect
 
 # Wait for ingestion to complete
 echo -e "\n${YELLOW}⏳ Waiting for Reddit ingestion to complete...${NC}"
-sleep 5
+wait_for_completion 120 "curl -s '$API_BASE_URL/api/v1/ingestion/status' | grep -q '\"reddit\": \"idle\"'" "Waiting for Reddit ingestion to complete"
 
 # Check ingestion status
 api_call "GET" "/ingestion/status" "" "Check ingestion progress"
