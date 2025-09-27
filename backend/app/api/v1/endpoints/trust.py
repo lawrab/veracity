@@ -396,7 +396,7 @@ async def get_trust_score_statistics(db: AsyncSession = Depends(get_postgres_ses
         stories = await story_service.get_stories(
             skip=0,
             limit=1000,  # Get recent stories for statistics
-            trust_score_min=0.0
+            trust_score_min=0.0,
         )
 
         if not stories:
@@ -406,7 +406,7 @@ async def get_trust_score_statistics(db: AsyncSession = Depends(get_postgres_ses
                 high_trust_count=0,
                 medium_trust_count=0,
                 low_trust_count=0,
-                score_trend=0.0
+                score_trend=0.0,
             )
 
         # Calculate statistics
@@ -421,7 +421,7 @@ async def get_trust_score_statistics(db: AsyncSession = Depends(get_postgres_ses
                 high_trust_count=0,
                 medium_trust_count=0,
                 low_trust_count=0,
-                score_trend=0.0
+                score_trend=0.0,
             )
 
         average_score = sum(trust_scores) / len(trust_scores)
@@ -444,7 +444,9 @@ async def get_trust_score_statistics(db: AsyncSession = Depends(get_postgres_ses
 
         logger.info(
             "Trust score statistics: avg=%.1f%%, total=%d stories, trend=%.1f%%",
-            average_score, len(trust_scores), score_trend
+            average_score,
+            len(trust_scores),
+            score_trend,
         )
 
         return TrustScoreStatistics(
@@ -453,7 +455,7 @@ async def get_trust_score_statistics(db: AsyncSession = Depends(get_postgres_ses
             high_trust_count=high_trust,
             medium_trust_count=medium_trust,
             low_trust_count=low_trust,
-            score_trend=round(score_trend, 1)
+            score_trend=round(score_trend, 1),
         )
 
     except Exception as e:

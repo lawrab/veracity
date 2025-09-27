@@ -137,12 +137,14 @@ class EnhancedWebSocketManager:
 
             # Send welcome message
             try:
-                await websocket.send_json({
-                    "type": "connection",
-                    "status": "connected",
-                    "channel": channel,
-                    "timestamp": datetime.utcnow().isoformat(),
-                })
+                await websocket.send_json(
+                    {
+                        "type": "connection",
+                        "status": "connected",
+                        "channel": channel,
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }
+                )
             except Exception as e:
                 logger.exception(f"Failed to send welcome message: {e}")
                 # Clean up connection info if welcome message fails

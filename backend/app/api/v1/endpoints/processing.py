@@ -26,12 +26,13 @@ router = APIRouter()
 async def process_posts_to_stories(
     background_tasks: BackgroundTasks,
     limit: int = 50,
-    db: AsyncSession = Depends(get_postgres_session)
+    db: AsyncSession = Depends(get_postgres_session),
 ):
     """
     Process raw social media posts into structured stories.
     """
     try:
+
         async def process_posts():
             try:
                 # Get MongoDB client
@@ -89,7 +90,7 @@ async def process_posts_to_stories(
 
         return {
             "message": f"Started processing up to {limit} posts into stories",
-            "status": "started"
+            "status": "started",
         }
 
     except Exception as e:
@@ -114,7 +115,7 @@ async def get_processing_status():
         return {
             "total_posts": total_posts,
             "processing_status": "idle",
-            "last_processed": datetime.utcnow().isoformat()
+            "last_processed": datetime.utcnow().isoformat(),
         }
 
     except Exception as e:
