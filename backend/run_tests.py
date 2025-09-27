@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 """Test runner script with proper setup and teardown."""
+from __future__ import annotations
 
 import asyncio
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
 from app.core.logging import get_logger
 
@@ -52,7 +52,7 @@ class TestRunner:
             return True
 
         except Exception as e:
-            logger.error(f"Failed to setup test database: {e}")
+            logger.exception(f"Failed to setup test database: {e}")
             return False
 
     def check_services(self) -> bool:
@@ -79,10 +79,10 @@ class TestRunner:
             return True
 
         except subprocess.CalledProcessError:
-            logger.error("Failed to check podman services")
+            logger.exception("Failed to check podman services")
             return False
 
-    def run_tests(self, test_type: Optional[str] = None) -> int:
+    def run_tests(self, test_type: str | None = None) -> int:
         """Run pytest with specified test type."""
         cmd = ["pytest", "-v", "--tb=short"]
 
@@ -155,7 +155,7 @@ class TestRunner:
                 await conn.close()
                 logger.info("✓ Cleaned up test database")
             except Exception as e:
-                logger.error(f"Failed to cleanup test database: {e}")
+                logger.exception(f"Failed to cleanup test database: {e}")
 
 
 async def main():

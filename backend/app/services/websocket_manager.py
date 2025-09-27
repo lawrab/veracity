@@ -5,12 +5,12 @@ Enhanced WebSocket Manager with Redis pub/sub for scaling.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 from collections import defaultdict
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
-import redis.asyncio as redis
 from fastapi import WebSocket, WebSocketDisconnect, status
 
 from app.core.config import settings
@@ -18,6 +18,7 @@ from app.core.database import get_redis_client
 from app.core.logging import get_logger
 
 if TYPE_CHECKING:
+    import redis.asyncio as redis
     from fastapi import WebSocket
 
 logger = get_logger(__name__)
@@ -26,7 +27,7 @@ logger = get_logger(__name__)
 class ConnectionInfo:
     """Track connection metadata."""
 
-    def __init__(self, websocket: WebSocket, user_id: Optional[str] = None):
+    def __init__(self, websocket: WebSocket, user_id: str | None = None):
         self.websocket = websocket
         self.user_id = user_id
         self.connected_at = datetime.utcnow()
@@ -35,6 +36,7 @@ class ConnectionInfo:
         self.message_count = 0
         self.rate_limit_window = datetime.utcnow()
         self.rate_limit_count = 0
+        self.heartbeat_task: asyncio.Task | None = None
 
 
 class EnhancedWebSocketManager:
@@ -54,9 +56,9 @@ class EnhancedWebSocketManager:
     def __init__(self):
         self.connections: dict[WebSocket, ConnectionInfo] = {}
         self.channels: dict[str, set[WebSocket]] = defaultdict(set)
-        self.redis_client: Optional[redis.Redis] = None
-        self.pubsub: Optional[redis.client.PubSub] = None
-        self.pubsub_task: Optional[asyncio.Task] = None
+        self.redis_client: redis.Redis | None = None
+        self.pubsub: redis.client.PubSub | None = None
+        self.pubsub_task: asyncio.Task | None = None
         self._initialized = False
 
     async def initialize(self):
@@ -75,7 +77,7 @@ class EnhancedWebSocketManager:
             else:
                 logger.warning("Redis not available, WebSocket scaling disabled")
         except Exception as e:
-            logger.error(f"Failed to initialize Redis pub/sub: {e}")
+            logger.exception(f"Failed to initialize Redis pub/sub: {e}")
 
     async def _redis_listener(self):
         """Listen for Redis pub/sub messages."""
@@ -94,20 +96,20 @@ class EnhancedWebSocketManager:
                             # Broadcast to local connections
                             await self._local_broadcast(channel, payload)
                     except json.JSONDecodeError:
-                        logger.error("Invalid JSON in Redis message")
+                        logger.exception("Invalid JSON in Redis message")
                     except Exception as e:
-                        logger.error(f"Error processing Redis message: {e}")
+                        logger.exception(f"Error processing Redis message: {e}")
         except asyncio.CancelledError:
             logger.info("Redis listener cancelled")
         except Exception as e:
-            logger.error(f"Redis listener error: {e}")
+            logger.exception(f"Redis listener error: {e}")
 
     async def connect(
         self,
         websocket: WebSocket,
         channel: str,
-        user_id: Optional[str] = None,
-        auth_token: Optional[str] = None,
+        user_id: str | None = None,
+        auth_token: str | None = None,
     ) -> bool:
         """
         Accept WebSocket connection with optional authentication.
@@ -142,7 +144,9 @@ class EnhancedWebSocketManager:
             )
 
             # Start heartbeat
-            asyncio.create_task(self._heartbeat_handler(websocket))
+            conn_info.heartbeat_task = asyncio.create_task(
+                self._heartbeat_handler(websocket)
+            )
 
             logger.info(
                 f"Client connected to channel '{channel}'. "
@@ -151,10 +155,10 @@ class EnhancedWebSocketManager:
             return True
 
         except Exception as e:
-            logger.error(f"Connection failed: {e}")
+            logger.exception(f"Connection failed: {e}")
             return False
 
-    async def _authenticate(self, auth_token: Optional[str]) -> bool:
+    async def _authenticate(self, auth_token: str | None) -> bool:
         """Validate authentication token."""
         if not auth_token:
             return False
@@ -191,7 +195,7 @@ class EnhancedWebSocketManager:
                 await self.disconnect(websocket)
                 break
             except Exception as e:
-                logger.error(f"Heartbeat error: {e}")
+                logger.exception(f"Heartbeat error: {e}")
                 await self.disconnect(websocket)
                 break
 
@@ -207,13 +211,15 @@ class EnhancedWebSocketManager:
             if not self.channels[channel]:
                 del self.channels[channel]
 
+        # Cancel heartbeat task
+        if conn_info.heartbeat_task and not conn_info.heartbeat_task.done():
+            conn_info.heartbeat_task.cancel()
+
         # Remove connection info
         del self.connections[websocket]
 
-        try:
+        with contextlib.suppress(Exception):
             await websocket.close()
-        except Exception:
-            pass  # Connection already closed
 
         logger.info(
             f"Client disconnected. Remaining connections: {len(self.connections)}"
@@ -275,7 +281,7 @@ class EnhancedWebSocketManager:
                 websocket, {"type": "error", "message": "Invalid JSON"}
             )
         except Exception as e:
-            logger.error(f"Message handling error: {e}")
+            logger.exception(f"Message handling error: {e}")
 
     def _check_rate_limit(self, conn_info: ConnectionInfo) -> bool:
         """Check if connection exceeded rate limit."""
@@ -344,11 +350,11 @@ class EnhancedWebSocketManager:
         except WebSocketDisconnect:
             await self.disconnect(websocket)
         except Exception as e:
-            logger.error(f"Failed to send message: {e}")
+            logger.exception(f"Failed to send message: {e}")
             await self.disconnect(websocket)
 
     async def broadcast(
-        self, channel: str, message: dict, exclude: Optional[WebSocket] = None
+        self, channel: str, message: dict, exclude: WebSocket | None = None
     ):
         """
         Broadcast message to channel (local and remote via Redis).
@@ -365,13 +371,13 @@ class EnhancedWebSocketManager:
                     "websocket:broadcast", json.dumps(redis_message)
                 )
             except Exception as e:
-                logger.error(f"Redis publish failed: {e}")
+                logger.exception(f"Redis publish failed: {e}")
 
         # Broadcast to local connections
         await self._local_broadcast(channel, message, exclude)
 
     async def _local_broadcast(
-        self, channel: str, message: dict, exclude: Optional[WebSocket] = None
+        self, channel: str, message: dict, exclude: WebSocket | None = None
     ):
         """Broadcast to local connections only."""
         if channel not in self.channels:
@@ -393,7 +399,7 @@ class EnhancedWebSocketManager:
             except WebSocketDisconnect:
                 disconnected.add(websocket)
             except Exception as e:
-                logger.error(f"Broadcast error: {e}")
+                logger.exception(f"Broadcast error: {e}")
                 disconnected.add(websocket)
 
         # Clean up disconnected
@@ -452,7 +458,7 @@ class EnhancedWebSocketManager:
                 for channel, connections in self.channels.items()
             },
             "users": len(
-                set(conn.user_id for conn in self.connections.values() if conn.user_id)
+                {conn.user_id for conn in self.connections.values() if conn.user_id}
             ),
             "redis_connected": self._initialized and self.redis_client is not None,
         }
