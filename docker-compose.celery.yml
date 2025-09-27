@@ -1,0 +1,62 @@
+version: '3.8'
+
+# Celery services for production deployment
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.celery.yml up -d
+
+services:
+  # Celery Worker
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: veracity-celery-worker
+    network_mode: host
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4 --queues=pipeline,scheduled,analysis
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - postgres
+      - mongodb
+    volumes:
+      - ./backend/logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.core.celery_app inspect ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Beat Scheduler
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: veracity-celery-beat
+    network_mode: host
+    command: celery -A app.core.celery_app beat --loglevel=info
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - postgres
+      - mongodb
+    volumes:
+      - ./backend/logs:/app/logs
+    restart: unless-stopped
+
+  # Flower - Celery Monitoring Dashboard (optional)
+  celery-flower:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: veracity-celery-flower
+    network_mode: host
+    command: celery -A app.core.celery_app flower --port=5555
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - celery-worker
+    restart: unless-stopped
+    # Access Flower at http://localhost:5555

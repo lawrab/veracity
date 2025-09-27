@@ -8,8 +8,6 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 
-import praw
-
 from app.core.config import settings
 from app.core.database import get_mongodb_db
 from app.core.logging import get_logger
@@ -18,7 +16,7 @@ logger = get_logger(__name__)
 
 
 class RedditCollector:
-    """Collects data from Reddit using PRAW."""
+    """Collects data from Reddit using AsyncPRAW."""
 
     def __init__(self):
         self.client_id = settings.REDDIT_CLIENT_ID
@@ -32,7 +30,9 @@ class RedditCollector:
             msg = "Reddit API credentials not configured"
             raise ValueError(msg)
 
-        self.reddit = praw.Reddit(
+        import asyncpraw
+
+        self.reddit = asyncpraw.Reddit(
             client_id=self.client_id,
             client_secret=self.client_secret,
             user_agent="Veracity:v1.0.0 (by /u/veracity_bot)",
@@ -64,16 +64,16 @@ class RedditCollector:
 
         for subreddit_name in subreddits:
             try:
-                subreddit = self.reddit.subreddit(subreddit_name)
+                subreddit = await self.reddit.subreddit(subreddit_name)
 
                 # Get hot posts
-                for post in subreddit.hot(limit=limit // len(subreddits)):
+                async for post in subreddit.hot(limit=limit // len(subreddits)):
                     post_data = await self._process_post(post, subreddit_name)
                     if post_data:
                         collected_posts.append(post_data)
 
                 # Get rising posts (potential trends)
-                for post in subreddit.rising(limit=limit // len(subreddits) // 2):
+                async for post in subreddit.rising(limit=limit // len(subreddits) // 2):
                     post_data = await self._process_post(post, subreddit_name)
                     if post_data:
                         collected_posts.append(post_data)
@@ -101,11 +101,12 @@ class RedditCollector:
         for keyword in keywords:
             try:
                 # Search across Reddit
-                search_results = self.reddit.subreddit("all").search(
+                all_subreddit = await self.reddit.subreddit("all")
+                search_results = all_subreddit.search(
                     keyword, sort="new", time_filter="day", limit=limit // len(keywords)
                 )
 
-                for post in search_results:
+                async for post in search_results:
                     post_data = await self._process_post(post, keyword)
                     if post_data:
                         collected_posts.append(post_data)
@@ -134,39 +135,54 @@ class RedditCollector:
             # Extract post URL
             post_url = f"https://reddit.com{post.permalink}"
 
+            # Get author safely
+            author_name = "[deleted]"
+            if post.author:
+                author_name = str(post.author)
+
+            # Get subreddit info safely
+            subreddit_name = "unknown"
+            subreddit_subscribers = 0
+            if hasattr(post, "subreddit") and post.subreddit:
+                subreddit_name = post.subreddit.display_name
+                try:
+                    subreddit_subscribers = post.subreddit.subscribers or 0
+                except Exception:
+                    subreddit_subscribers = 0
+
             # Create post document
             return {
                 "_id": f"reddit_{post.id}",
                 "platform": "reddit",
                 "external_id": post.id,
-                "author_username": str(post.author) if post.author else "[deleted]",
-                "author_display_name": str(post.author) if post.author else "[deleted]",
+                "author_username": author_name,
+                "author_display_name": author_name,
                 "content": content,
                 "url": post_url,
                 "posted_at": datetime.fromtimestamp(post.created_utc, tz=timezone.utc),
                 "engagement": {
-                    "upvotes": post.ups,
-                    "downvotes": post.downs,
-                    "comments": post.num_comments,
-                    "score": post.score,
-                    "upvote_ratio": post.upvote_ratio,
+                    "upvotes": getattr(post, "ups", 0),
+                    "downvotes": getattr(post, "downs", 0),
+                    "comments": getattr(post, "num_comments", 0),
+                    "score": getattr(post, "score", 0),
+                    "upvote_ratio": getattr(post, "upvote_ratio", 0.5),
                 },
                 "metadata": {
-                    "subreddit": post.subreddit.display_name,
-                    "subreddit_subscribers": post.subreddit.subscribers,
-                    "is_self": post.is_self,
-                    "is_video": post.is_video,
-                    "over_18": post.over_18,
-                    "spoiler": post.spoiler,
-                    "stickied": post.stickied,
+                    "subreddit": subreddit_name,
+                    "subreddit_subscribers": subreddit_subscribers,
+                    "is_self": getattr(post, "is_self", False),
+                    "is_video": getattr(post, "is_video", False),
+                    "over_18": getattr(post, "over_18", False),
+                    "spoiler": getattr(post, "spoiler", False),
+                    "stickied": getattr(post, "stickied", False),
                     "context": context,
-                    "flair": post.link_flair_text,
-                    "gilded": post.gilded,
-                    "awards": post.total_awards_received,
+                    "flair": getattr(post, "link_flair_text", None),
+                    "gilded": getattr(post, "gilded", 0),
+                    "awards": getattr(post, "total_awards_received", 0),
                 },
                 "hashtags": self._extract_hashtags(content),
                 "mentions": self._extract_mentions(content),
-                "media_urls": self._extract_media_urls(post),
+                "media_urls": await self._extract_media_urls(post),
                 "language": "en",  # Reddit is primarily English
                 "processed": False,
             }
@@ -190,23 +206,26 @@ class RedditCollector:
         mention_pattern = r"u/([A-Za-z0-9_-]+)"
         return re.findall(mention_pattern, content)
 
-    def _extract_media_urls(self, post) -> list[str]:
+    async def _extract_media_urls(self, post) -> list[str]:
         """Extract media URLs from post."""
         urls = []
 
-        # Post URL if it's a link post
-        if not post.is_self and post.url:
-            urls.append(post.url)
+        try:
+            # Post URL if it's a link post
+            if not getattr(post, "is_self", True) and hasattr(post, "url") and post.url:
+                urls.append(post.url)
 
-        # Check for preview images
-        if hasattr(post, "preview") and post.preview:
-            try:
-                images = post.preview.get("images", [])
-                urls.extend(
-                    image["source"]["url"] for image in images if "source" in image
-                )
-            except Exception:
-                pass
+            # Check for preview images
+            if hasattr(post, "preview") and post.preview:
+                try:
+                    images = post.preview.get("images", [])
+                    urls.extend(
+                        image["source"]["url"] for image in images if "source" in image
+                    )
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
         return urls
 
@@ -247,10 +266,10 @@ class RedditCollector:
         while True:
             for subreddit_name in subreddits:
                 try:
-                    subreddit = self.reddit.subreddit(subreddit_name)
+                    subreddit = await self.reddit.subreddit(subreddit_name)
 
                     # Check new posts
-                    for post in subreddit.new(limit=10):
+                    async for post in subreddit.new(limit=10):
                         if post.id not in seen_posts:
                             seen_posts.add(post.id)
                             post_data = await self._process_post(post, subreddit_name)
@@ -277,16 +296,16 @@ class RedditCollector:
 
         for subreddit_name in subreddit_names:
             try:
-                subreddit = self.reddit.subreddit(subreddit_name)
+                subreddit = await self.reddit.subreddit(subreddit_name)
                 subreddit_info[subreddit_name] = {
                     "display_name": subreddit.display_name,
-                    "title": subreddit.title,
-                    "description": subreddit.public_description,
-                    "subscribers": subreddit.subscribers,
-                    "active_users": subreddit.active_user_count,
-                    "created_utc": subreddit.created_utc,
-                    "over_18": subreddit.over18,
-                    "lang": subreddit.lang,
+                    "title": getattr(subreddit, "title", ""),
+                    "description": getattr(subreddit, "public_description", ""),
+                    "subscribers": getattr(subreddit, "subscribers", 0),
+                    "active_users": getattr(subreddit, "active_user_count", 0),
+                    "created_utc": getattr(subreddit, "created_utc", 0),
+                    "over_18": getattr(subreddit, "over18", False),
+                    "lang": getattr(subreddit, "lang", "en"),
                 }
             except Exception as e:
                 logger.exception(
