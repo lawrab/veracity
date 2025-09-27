@@ -9,7 +9,10 @@
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        pkgs = nixpkgs.legacyPackages.${system};
+        pkgs = import nixpkgs {
+          inherit system;
+          config.allowUnfree = true;  # Allow unfree packages like mongosh
+        };
         
         # Basic Python for virtual environment setup
         python = pkgs.python311;
@@ -51,7 +54,11 @@
             # Database tools
             postgresql_15
             mongodb-tools
+            mongosh  # Modern MongoDB shell
             redis
+            
+            # WebSocket testing
+            websocat
             
             # Development utilities
             tmux
@@ -98,6 +105,8 @@
             echo "  - Node.js $(node --version)"
             echo "  - Podman $(podman --version | head -n1)"
             echo "  - PostgreSQL $(postgres --version | cut -d' ' -f3)"
+            echo "  - MongoDB Tools: mongosh, mongodump, mongorestore, mongostat"
+            echo "  - WebSocket testing: websocat"
             echo ""
             echo "Quick start:"
             echo "  1. Copy .env.example to .env and configure"
@@ -150,8 +159,14 @@
             fe-test() { cd frontend && npm test "$@"; }
             fe-lint() { cd frontend && npm run lint; }
             
-            psql-local() { psql postgresql://veracity_user:veracity_password@localhost:5432/veracity "$@"; }
-            mongo-local() { mongosh mongodb://veracity_user:veracity_password@localhost:27017/veracity "$@"; }
+            psql-local() { 
+              if [ -f .env ]; then export $(grep -v '^#' .env | xargs); fi
+              psql "postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB" "$@"; 
+            }
+            mongo-local() { 
+              if [ -f .env ]; then export $(grep -v '^#' .env | xargs); fi
+              mongosh --host "$MONGODB_HOST:$MONGODB_PORT" -u "$MONGODB_USER" -p "$MONGODB_PASSWORD" --authenticationDatabase admin "$MONGODB_DB" "$@"; 
+            }
             redis-cli-local() { redis-cli -h localhost -p 6379 "$@"; }
             
             logs-backend() { podman logs -f veracity-backend "$@"; }

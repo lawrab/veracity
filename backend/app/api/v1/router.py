@@ -6,6 +6,7 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     ingestion,
+    processing,
     sources,
     stories,
     trends,
@@ -20,5 +21,6 @@ api_router.include_router(trends.router, prefix="/trends", tags=["trends"])
 api_router.include_router(stories.router, prefix="/stories", tags=["stories"])
 api_router.include_router(sources.router, prefix="/sources", tags=["sources"])
 api_router.include_router(ingestion.router, prefix="/ingestion", tags=["ingestion"])
+api_router.include_router(processing.router, prefix="/processing", tags=["processing"])
 api_router.include_router(websocket_enhanced.router, prefix="/ws", tags=["websocket"])
 api_router.include_router(trust.router, prefix="/trust", tags=["trust-scoring"])

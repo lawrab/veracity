@@ -65,8 +65,18 @@ async def init_databases():
     """Initialize all database connections."""
     global mongodb_client, mongodb_db, redis_client, elasticsearch_client
 
-    # MongoDB
-    mongodb_client = AsyncIOMotorClient(settings.MONGODB_URL)
+    # MongoDB with optimized connection pool settings
+    mongodb_client = AsyncIOMotorClient(
+        settings.MONGODB_URL,
+        maxPoolSize=10,  # Maximum connections in pool
+        minPoolSize=1,  # Minimum connections in pool
+        maxIdleTimeMS=30000,  # 30 seconds max idle time
+        serverSelectionTimeoutMS=5000,  # 5 seconds timeout
+        connectTimeoutMS=5000,  # 5 seconds connection timeout
+        heartbeatFrequencyMS=60000,  # 60 seconds heartbeat frequency (reduced noise)
+        retryWrites=True,
+        retryReads=True,
+    )
     mongodb_db = mongodb_client.veracity
 
     # Redis

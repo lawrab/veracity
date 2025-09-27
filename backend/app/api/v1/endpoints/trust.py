@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from app.core.database import get_postgres_session
 from app.services.scoring.trust_scorer import TrustScorer
 from app.services.story_service import StoryService
-from app.services.websocket_service import websocket_manager
+from app.services.websocket_manager import websocket_manager
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -367,4 +367,97 @@ async def bulk_calculate_trust_scores(
         raise
     except Exception as e:
         logger.exception(f"Error in bulk trust score calculation: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+class TrustScoreStatistics(BaseModel):
+    """Trust score statistics response."""
+
+    average_score: float = Field(..., description="Average trust score percentage")
+    total_stories: int = Field(..., description="Total stories with trust scores")
+    high_trust_count: int = Field(..., description="Stories with trust score >= 80%")
+    medium_trust_count: int = Field(..., description="Stories with trust score 50-80%")
+    low_trust_count: int = Field(..., description="Stories with trust score < 50%")
+    score_trend: float = Field(..., description="Score change percentage")
+
+
+@router.get("/statistics", response_model=TrustScoreStatistics)
+async def get_trust_score_statistics(db: AsyncSession = Depends(get_postgres_session)):
+    """
+    Get trust score statistics across all stories.
+
+    Returns average trust score, distribution, and trend information
+    for dashboard display and analytics.
+    """
+    try:
+        story_service = StoryService(db)
+
+        # Get all stories with trust scores (adjust limit as needed)
+        stories = await story_service.get_stories(
+            skip=0,
+            limit=1000,  # Get recent stories for statistics
+            trust_score_min=0.0,
+        )
+
+        if not stories:
+            return TrustScoreStatistics(
+                average_score=0.0,
+                total_stories=0,
+                high_trust_count=0,
+                medium_trust_count=0,
+                low_trust_count=0,
+                score_trend=0.0,
+            )
+
+        # Calculate statistics
+        trust_scores = [
+            story.trust_score for story in stories if story.trust_score is not None
+        ]
+
+        if not trust_scores:
+            return TrustScoreStatistics(
+                average_score=0.0,
+                total_stories=len(stories),
+                high_trust_count=0,
+                medium_trust_count=0,
+                low_trust_count=0,
+                score_trend=0.0,
+            )
+
+        average_score = sum(trust_scores) / len(trust_scores)
+
+        # Count by trust level
+        high_trust = len([s for s in trust_scores if s >= 80])
+        medium_trust = len([s for s in trust_scores if 50 <= s < 80])
+        low_trust = len([s for s in trust_scores if s < 50])
+
+        # Calculate trend (simplified - compare recent vs older stories)
+        mid_point = len(trust_scores) // 2
+        if mid_point > 0:
+            recent_avg = sum(trust_scores[:mid_point]) / mid_point
+            older_avg = sum(trust_scores[mid_point:]) / (len(trust_scores) - mid_point)
+            score_trend = (
+                ((recent_avg - older_avg) / older_avg) * 100 if older_avg > 0 else 0.0
+            )
+        else:
+            score_trend = 0.0
+
+        logger.info(
+            "Trust score statistics: avg=%.1f%%, total=%d stories, trend=%.1f%%",
+            average_score,
+            len(trust_scores),
+            score_trend,
+        )
+
+        return TrustScoreStatistics(
+            average_score=round(average_score, 1),
+            total_stories=len(trust_scores),
+            high_trust_count=high_trust,
+            medium_trust_count=medium_trust,
+            low_trust_count=low_trust,
+            score_trend=round(score_trend, 1),
+        )
+
+    except Exception as e:
+        logger.exception(f"Error getting trust score statistics: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")

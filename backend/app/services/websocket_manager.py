@@ -132,16 +132,27 @@ class EnhancedWebSocketManager:
             self.connections[websocket] = conn_info
             self.channels[channel].add(websocket)
 
+            # Small delay to ensure connection is fully established
+            await asyncio.sleep(0.1)
+
             # Send welcome message
-            await self.send_direct(
-                websocket,
-                {
-                    "type": "connection",
-                    "status": "connected",
-                    "channel": channel,
-                    "timestamp": datetime.utcnow().isoformat(),
-                },
-            )
+            try:
+                await websocket.send_json(
+                    {
+                        "type": "connection",
+                        "status": "connected",
+                        "channel": channel,
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }
+                )
+            except Exception as e:
+                logger.exception(f"Failed to send welcome message: {e}")
+                # Clean up connection info if welcome message fails
+                self.connections.pop(websocket, None)
+                self.channels[channel].discard(websocket)
+                if not self.channels[channel]:
+                    del self.channels[channel]
+                return False
 
             # Start heartbeat
             conn_info.heartbeat_task = asyncio.create_task(
@@ -348,10 +359,11 @@ class EnhancedWebSocketManager:
                 conn_info.message_count += 1
 
         except WebSocketDisconnect:
-            await self.disconnect(websocket)
+            # Don't call disconnect here - let the endpoint handle it
+            logger.debug("WebSocket disconnected during send")
         except Exception as e:
             logger.exception(f"Failed to send message: {e}")
-            await self.disconnect(websocket)
+            # Don't call disconnect here - let the endpoint handle it
 
     async def broadcast(
         self, channel: str, message: dict, exclude: WebSocket | None = None

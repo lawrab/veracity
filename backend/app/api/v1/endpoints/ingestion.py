@@ -42,6 +42,15 @@ async def ingest_reddit(request: IngestionRequest, background_tasks: BackgroundT
     """
     Trigger Reddit data collection for specified subreddits.
     """
+    # Check if Reddit collector is already running
+    if ingestion_status["reddit"] == CollectorStatus.RUNNING:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Reddit ingestion is already running. Please wait for it to complete."
+            ),
+        )
+
     try:
         ingestion_status["reddit"] = CollectorStatus.RUNNING
 
@@ -91,6 +100,15 @@ async def test_ingestion(background_tasks: BackgroundTasks):
     Test ingestion with default subreddits.
     """
     default_subreddits = ["python", "technology", "worldnews"]
+
+    # Check if Reddit collector is already running
+    if ingestion_status["reddit"] == CollectorStatus.RUNNING:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Reddit ingestion is already running. Please wait for it to complete."
+            ),
+        )
 
     try:
         ingestion_status["reddit"] = CollectorStatus.RUNNING

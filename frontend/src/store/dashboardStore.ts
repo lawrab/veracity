@@ -4,7 +4,7 @@ import {
   CollectedDataSummary,
   CollectorStatus 
 } from '@/types/ingestion';
-import { apiService } from '@/services/api';
+import { apiService, TrustScoreStatistics } from '@/services/api';
 
 interface DashboardState {
   // System health
@@ -19,10 +19,15 @@ interface DashboardState {
   dataSummary: CollectedDataSummary[];
   loadingSummary: boolean;
   
+  // Trust score statistics
+  trustStats: TrustScoreStatistics | null;
+  loadingTrustStats: boolean;
+  
   // Actions
   checkApiHealth: () => Promise<void>;
   fetchIngestionStatus: () => Promise<void>;
   fetchDataSummary: () => Promise<void>;
+  fetchTrustStats: () => Promise<void>;
   triggerIngestion: (platform: 'reddit' | 'twitter' | 'news' | 'test') => Promise<void>;
   startPolling: () => void;
   stopPolling: () => void;
@@ -38,6 +43,8 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   loadingStatus: false,
   dataSummary: [],
   loadingSummary: false,
+  trustStats: null,
+  loadingTrustStats: false,
 
   // Actions
   checkApiHealth: async () => {
@@ -74,6 +81,18 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
       console.error('Failed to fetch data summary:', error);
     } finally {
       set({ loadingSummary: false });
+    }
+  },
+
+  fetchTrustStats: async () => {
+    set({ loadingTrustStats: true });
+    try {
+      const stats = await apiService.getTrustScoreStatistics();
+      set({ trustStats: stats });
+    } catch (error) {
+      console.error('Failed to fetch trust statistics:', error);
+    } finally {
+      set({ loadingTrustStats: false });
     }
   },
 
@@ -115,11 +134,12 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     // Stop any existing polling
     get().stopPolling();
     
-    // Start new polling
+    // Reduced polling - WebSocket should handle real-time updates
     pollingInterval = setInterval(() => {
       get().fetchIngestionStatus();
       get().fetchDataSummary();
-    }, 10000); // Poll every 10 seconds instead of 5
+      get().fetchTrustStats();
+    }, 60000); // Poll every 60 seconds as fallback only
   },
 
   stopPolling: () => {
