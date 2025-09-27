@@ -33,7 +33,7 @@ export default function DashboardPage() {
   // Calculate dynamic statistics from real data
   const totalDataPoints = dataSummary.reduce((sum, item) => sum + item.count, 0);
   const activePlatforms = dataSummary.filter(s => s.count > 0).length;
-  const totalTopics = [...new Set(dataSummary.flatMap(s => s.topics))].length;
+  const totalTopics = Array.from(new Set(dataSummary.flatMap(s => s.topics))).length;
 
   return (
     <div className="space-y-6">
