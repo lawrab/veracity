@@ -5,6 +5,7 @@ Tests the REST API functionality for trust score calculations,
 bot detection, and trust score management.
 """
 
+import uuid
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
@@ -15,60 +16,65 @@ from app.main import app
 from app.schemas.story import StoryResponse
 
 
+@pytest.fixture
+def client():
+    """Create test client."""
+    return TestClient(app)
+
+
+@pytest.fixture
+def test_story_id():
+    """Generate a test story UUID."""
+    return str(uuid.uuid4())
+
+
+@pytest.fixture
+def sample_story_response(test_story_id):
+    """Create sample story response."""
+    return StoryResponse(
+        id=test_story_id,
+        title="Test Story",
+        description="Test description",
+        category="technology",
+        trust_score=75.0,
+        velocity=1.2,
+        geographic_spread={"US": 50},
+        first_seen_at=datetime.now(timezone.utc),
+        last_updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(timezone.utc),
+    )
+
+
+@pytest.fixture
+def mock_trust_score_result():
+    """Create mock trust score calculation result."""
+    return {
+        "score": 0.75,
+        "score_percentage": 75.0,
+        "signals": {
+            "source_credibility": {
+                "value": 0.8,
+                "weight": 0.25,
+                "contribution": 0.2,
+            },
+            "velocity_pattern": {
+                "value": 0.7,
+                "weight": 0.20,
+                "contribution": 0.14,
+            },
+        },
+        "explanation": ["Source credibility: 80.0%", "Velocity pattern: 70.0%"],
+        "calculated_at": "2024-01-01T12:00:00Z",
+        "confidence": 0.9,
+    }
+
+
 class TestTrustAPI:
     """Test cases for Trust API endpoints."""
-
-    @pytest.fixture
-    def client(self):
-        """Create test client."""
-        return TestClient(app)
-
-    @pytest.fixture
-    def sample_story_response(self):
-        """Create sample story response."""
-        return StoryResponse(
-            id="test-story-123",
-            title="Test Story",
-            description="Test description",
-            category="technology",
-            trust_score=75.0,
-            velocity=1.2,
-            geographic_spread={"US": 50},
-            first_seen_at=datetime.now(timezone.utc),
-            last_updated_at=datetime.now(timezone.utc),
-            created_at=datetime.now(timezone.utc),
-        )
-
-    @pytest.fixture
-    def mock_trust_score_result(self):
-        """Create mock trust score calculation result."""
-        return {
-            "score": 0.75,
-            "score_percentage": 75.0,
-            "signals": {
-                "source_credibility": {
-                    "value": 0.8,
-                    "weight": 0.25,
-                    "contribution": 0.2,
-                },
-                "velocity_pattern": {
-                    "value": 0.7,
-                    "weight": 0.20,
-                    "contribution": 0.14,
-                },
-            },
-            "explanation": ["Source credibility: 80.0%", "Velocity pattern: 70.0%"],
-            "calculated_at": "2024-01-01T12:00:00Z",
-            "confidence": 0.9,
-        }
 
 
 class TestCalculateTrustScore:
     """Test /trust/calculate endpoint."""
-
-    @pytest.fixture
-    def client(self):
-        return TestClient(app)
 
     @patch("app.api.v1.endpoints.trust.StoryService")
     @patch("app.api.v1.endpoints.trust.TrustScorer")
@@ -79,6 +85,7 @@ class TestCalculateTrustScore:
         mock_trust_scorer_class,
         mock_story_service_class,
         client,
+        test_story_id,
         sample_story_response,
         mock_trust_score_result,
     ):
@@ -98,7 +105,7 @@ class TestCalculateTrustScore:
 
         # Make request
         response = client.post(
-            "/api/v1/trust/calculate", json={"story_id": "test-story-123"}
+            "/api/v1/trust/calculate", json={"story_id": test_story_id}
         )
 
         # Verify response
@@ -112,7 +119,7 @@ class TestCalculateTrustScore:
         assert data["confidence"] == 0.9
 
         # Verify service calls
-        mock_story_service.get_story_by_id.assert_called_once_with("test-story-123")
+        mock_story_service.get_story_by_id.assert_called_once_with(test_story_id)
         mock_trust_scorer.calculate_score.assert_called_once_with(sample_story_response)
         mock_story_service.update_trust_score.assert_called_once()
         mock_websocket.broadcast_trust_score_update.assert_called_once()
@@ -231,7 +238,7 @@ class TestGetCurrentTrustScore:
 
     @patch("app.api.v1.endpoints.trust.StoryService")
     def test_get_current_score_success(
-        self, mock_story_service_class, client, sample_story_response
+        self, mock_story_service_class, client, test_story_id, sample_story_response
     ):
         """Test getting current trust score."""
 
@@ -239,7 +246,7 @@ class TestGetCurrentTrustScore:
         mock_story_service.get_story_by_id.return_value = sample_story_response
         mock_story_service_class.return_value = mock_story_service
 
-        response = client.get("/api/v1/trust/story/test-story-123/score")
+        response = client.get(f"/api/v1/trust/story/{test_story_id}/score")
 
         assert response.status_code == 200
         data = response.json()
@@ -255,6 +262,7 @@ class TestGetCurrentTrustScore:
         mock_trust_scorer_class,
         mock_story_service_class,
         client,
+        test_story_id,
         sample_story_response,
         mock_trust_score_result,
     ):
@@ -270,7 +278,7 @@ class TestGetCurrentTrustScore:
         mock_trust_scorer_class.return_value = mock_trust_scorer
 
         response = client.get(
-            "/api/v1/trust/story/test-story-123/score?recalculate=true"
+            f"/api/v1/trust/story/{test_story_id}/score?recalculate=true"
         )
 
         assert response.status_code == 200
@@ -296,7 +304,7 @@ class TestTrustLeaderboard:
         """Sample list of stories for leaderboard."""
         return [
             StoryResponse(
-                id=f"story-{i}",
+                id=str(uuid.uuid4()),
                 title=f"Story {i}",
                 description=f"Description {i}",
                 category="technology",
@@ -392,7 +400,7 @@ class TestBulkCalculateTrustScores:
         mock_trust_scorer.calculate_score.return_value = mock_trust_score_result
         mock_trust_scorer_class.return_value = mock_trust_scorer
 
-        story_ids = ["story-1", "story-2", "story-3"]
+        story_ids = [str(uuid.uuid4()) for _ in range(3)]
 
         response = client.post("/api/v1/trust/bulk-calculate", json=story_ids)
 
@@ -412,7 +420,7 @@ class TestBulkCalculateTrustScores:
     def test_bulk_calculate_too_many_stories(self, client):
         """Test bulk calculation with too many stories."""
 
-        story_ids = [f"story-{i}" for i in range(51)]  # More than max of 50
+        story_ids = [str(uuid.uuid4()) for _ in range(51)]  # More than max of 50
 
         response = client.post("/api/v1/trust/bulk-calculate", json=story_ids)
 
@@ -426,11 +434,14 @@ class TestBulkCalculateTrustScores:
     ):
         """Test bulk calculation with some errors."""
 
+        story_id_1 = str(uuid.uuid4())
+        story_id_2 = str(uuid.uuid4())
+
         mock_story_service = AsyncMock()
         # First story exists, second doesn't
         mock_story_service.get_story_by_id.side_effect = [
             StoryResponse(
-                id="story-1",
+                id=story_id_1,
                 title="Story 1",
                 description="Desc",
                 category="tech",
@@ -457,7 +468,7 @@ class TestBulkCalculateTrustScores:
         }
         mock_trust_scorer_class.return_value = mock_trust_scorer
 
-        story_ids = ["story-1", "story-2"]
+        story_ids = [story_id_1, story_id_2]
 
         response = client.post("/api/v1/trust/bulk-calculate", json=story_ids)
 
@@ -468,4 +479,4 @@ class TestBulkCalculateTrustScores:
         assert data["errors"] == 1
         assert len(data["results"]) == 1
         assert len(data["error_details"]) == 1
-        assert "story-2 not found" in data["error_details"][0]
+        assert f"{story_id_2} not found" in data["error_details"][0]

@@ -1,21 +1,19 @@
 """Global pytest configuration and fixtures."""
+
 import asyncio
-import os
 from typing import AsyncGenerator, Generator
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-import pytest_asyncio
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
-from sqlalchemy import create_engine
+from motor.motor_asyncio import AsyncIOMotorClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from motor.motor_asyncio import AsyncIOMotorClient
 
-from app.main import app
 from app.core.config import settings
-from app.core.database import Base, get_postgres_session, get_mongodb_db
+from app.core.database import Base, get_postgres_session
+from app.main import app
 
 
 @pytest.fixture(scope="session")
@@ -32,15 +30,15 @@ async def test_db_engine():
     """Create test database engine."""
     test_db_url = settings.POSTGRES_URL.replace("/veracity", "/test_veracity")
     engine = create_async_engine(test_db_url, echo=False, future=True)
-    
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
+
     yield engine
-    
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-    
+
     await engine.dispose()
 
 
@@ -52,7 +50,7 @@ async def db_session(test_db_engine) -> AsyncGenerator[AsyncSession, None]:
         class_=AsyncSession,
         expire_on_commit=False,
     )
-    
+
     async with async_session_maker() as session:
         yield session
         await session.rollback()
@@ -63,9 +61,9 @@ async def mongodb_client() -> AsyncGenerator[AsyncIOMotorClient, None]:
     """Create MongoDB client for tests."""
     client = AsyncIOMotorClient(settings.MONGODB_URL)
     test_db = client.test_veracity
-    
+
     yield test_db
-    
+
     # Cleanup test collections
     await client.drop_database("test_veracity")
     client.close()
@@ -74,28 +72,30 @@ async def mongodb_client() -> AsyncGenerator[AsyncIOMotorClient, None]:
 @pytest.fixture
 def client(db_session) -> Generator[TestClient, None, None]:
     """Create FastAPI test client with database override."""
+
     def override_get_db():
         yield db_session
-    
+
     app.dependency_overrides[get_postgres_session] = override_get_db
-    
+
     with TestClient(app) as test_client:
         yield test_client
-    
+
     app.dependency_overrides.clear()
 
 
 @pytest.fixture
 async def async_client(db_session) -> AsyncGenerator[AsyncClient, None]:
     """Create async FastAPI test client."""
+
     def override_get_db():
         yield db_session
-    
+
     app.dependency_overrides[get_postgres_session] = override_get_db
-    
+
     async with AsyncClient(app=app, base_url="http://test") as ac:
         yield ac
-    
+
     app.dependency_overrides.clear()
 
 
@@ -131,15 +131,8 @@ def sample_social_post():
         "content": "This is a test post about technology and AI",
         "author": "test_user",
         "created_at": "2025-01-22T12:00:00Z",
-        "engagement": {
-            "upvotes": 100,
-            "comments": 50,
-            "shares": 10
-        },
-        "metadata": {
-            "subreddit": "technology",
-            "flair": "News"
-        }
+        "engagement": {"upvotes": 100, "comments": 50, "shares": 10},
+        "metadata": {"subreddit": "technology", "flair": "News"},
     }
 
 
@@ -154,7 +147,7 @@ def sample_news_article():
         "published_at": "2025-01-22T10:00:00Z",
         "author": "John Doe",
         "categories": ["technology", "ai", "innovation"],
-        "summary": "A brief summary of the article content"
+        "summary": "A brief summary of the article content",
     }
 
 
@@ -177,4 +170,3 @@ def mock_ml_model():
 async def seed_test_data(db_session, mongodb_client):
     """Seed database with test data."""
     # Add test data creation logic here as needed
-    pass

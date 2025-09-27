@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+</head>
+<body>
+    <h1>WebSocket Test Page</h1>
+    <div id="status">Connecting...</div>
+    <div id="messages"></div>
+    <button onclick="subscribe()">Subscribe to Stories</button>
+    <button onclick="sendPing()">Send Ping</button>
+    
+    <script>
+        const ws = new WebSocket('ws://localhost:8000/api/v1/ws/v2/connect?channel=test');
+        const statusDiv = document.getElementById('status');
+        const messagesDiv = document.getElementById('messages');
+        
+        ws.onopen = (event) => {
+            statusDiv.textContent = 'Connected!';
+            addMessage('Connection opened');
+        };
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            addMessage('Received: ' + JSON.stringify(data));
+            
+            if (data.type === 'ping') {
+                ws.send(JSON.stringify({ type: 'pong' }));
+                addMessage('Sent pong response');
+            }
+        };
+        
+        ws.onerror = (error) => {
+            statusDiv.textContent = 'Error occurred';
+            addMessage('Error: ' + error);
+        };
+        
+        ws.onclose = () => {
+            statusDiv.textContent = 'Disconnected';
+            addMessage('Connection closed');
+        };
+        
+        function subscribe() {
+            ws.send(JSON.stringify({
+                type: 'subscribe',
+                channel: 'stories'
+            }));
+            addMessage('Sent subscribe request for stories');
+        }
+        
+        function sendPing() {
+            ws.send(JSON.stringify({
+                type: 'test',
+                message: 'Hello WebSocket!'
+            }));
+            addMessage('Sent test message');
+        }
+        
+        function addMessage(msg) {
+            const p = document.createElement('p');
+            p.textContent = new Date().toLocaleTimeString() + ': ' + msg;
+            messagesDiv.appendChild(p);
+        }
+    </script>
+</body>
+</html>

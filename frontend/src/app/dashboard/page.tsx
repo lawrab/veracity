@@ -3,6 +3,7 @@
 import React from 'react';
 import StoryList from '@/components/stories/StoryList';
 import TrendFeed from '@/components/trends/TrendFeed';
+import ConnectionStatus from '@/components/ConnectionStatus';
 import { 
   ChartBarIcon,
   NewspaperIcon,
@@ -13,6 +14,7 @@ import {
 export default function DashboardPage() {
   return (
     <div className="space-y-6">
+        <ConnectionStatus />
         {/* Page Header */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">

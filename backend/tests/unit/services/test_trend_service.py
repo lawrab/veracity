@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.trend import Trend
+from app.models.sql_models import Trend
 from app.schemas.trend import TrendCreate
 from app.services.trend_service import TrendService
 

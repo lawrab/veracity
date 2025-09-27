@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/trust", tags=["trust-scoring"])
+router = APIRouter(tags=["trust-scoring"])
 
 
 class TrustScoreRequest(BaseModel):
