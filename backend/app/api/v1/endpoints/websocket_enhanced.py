@@ -1,6 +1,7 @@
 """
 Enhanced WebSocket endpoints with authentication, heartbeat, and scaling.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Header, Query, WebSocket, WebSocketDisconnect
