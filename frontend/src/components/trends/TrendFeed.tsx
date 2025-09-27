@@ -16,7 +16,7 @@ export default function TrendFeed() {
     fetchTrends();
     
     if (autoRefresh) {
-      const interval = setInterval(fetchTrends, 30000); // Refresh every 30 seconds
+      const interval = setInterval(fetchTrends, 300000); // Refresh every 5 minutes as fallback only
       return () => clearInterval(interval);
     }
   }, [autoRefresh]);

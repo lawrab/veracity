@@ -372,7 +372,7 @@ async def bulk_calculate_trust_scores(
 
 class TrustScoreStatistics(BaseModel):
     """Trust score statistics response."""
-    
+
     average_score: float = Field(..., description="Average trust score percentage")
     total_stories: int = Field(..., description="Total number of stories with trust scores")
     high_trust_count: int = Field(..., description="Number of stories with trust score >= 80%")
@@ -391,14 +391,14 @@ async def get_trust_score_statistics(db: AsyncSession = Depends(get_postgres_ses
     """
     try:
         story_service = StoryService(db)
-        
+
         # Get all stories with trust scores (adjust limit as needed)
         stories = await story_service.get_stories(
-            skip=0, 
+            skip=0,
             limit=1000,  # Get recent stories for statistics
             trust_score_min=0.0
         )
-        
+
         if not stories:
             return TrustScoreStatistics(
                 average_score=0.0,
@@ -408,10 +408,10 @@ async def get_trust_score_statistics(db: AsyncSession = Depends(get_postgres_ses
                 low_trust_count=0,
                 score_trend=0.0
             )
-        
+
         # Calculate statistics
         trust_scores = [story.trust_score for story in stories if story.trust_score is not None]
-        
+
         if not trust_scores:
             return TrustScoreStatistics(
                 average_score=0.0,
@@ -421,14 +421,14 @@ async def get_trust_score_statistics(db: AsyncSession = Depends(get_postgres_ses
                 low_trust_count=0,
                 score_trend=0.0
             )
-        
+
         average_score = sum(trust_scores) / len(trust_scores)
-        
+
         # Count by trust level
         high_trust = len([s for s in trust_scores if s >= 80])
         medium_trust = len([s for s in trust_scores if 50 <= s < 80])
         low_trust = len([s for s in trust_scores if s < 50])
-        
+
         # Calculate trend (simplified - compare recent vs older stories)
         mid_point = len(trust_scores) // 2
         if mid_point > 0:
@@ -437,12 +437,12 @@ async def get_trust_score_statistics(db: AsyncSession = Depends(get_postgres_ses
             score_trend = ((recent_avg - older_avg) / older_avg) * 100 if older_avg > 0 else 0.0
         else:
             score_trend = 0.0
-        
+
         logger.info(
             "Trust score statistics: avg=%.1f%%, total=%d stories, trend=%.1f%%",
             average_score, len(trust_scores), score_trend
         )
-        
+
         return TrustScoreStatistics(
             average_score=round(average_score, 1),
             total_stories=len(trust_scores),
@@ -451,7 +451,7 @@ async def get_trust_score_statistics(db: AsyncSession = Depends(get_postgres_ses
             low_trust_count=low_trust,
             score_trend=round(score_trend, 1)
         )
-        
+
     except Exception as e:
         logger.exception(f"Error getting trust score statistics: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")

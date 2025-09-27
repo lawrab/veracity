@@ -73,7 +73,7 @@ async def init_databases():
         maxIdleTimeMS=30000,  # 30 seconds max idle time
         serverSelectionTimeoutMS=5000,  # 5 seconds timeout
         connectTimeoutMS=5000,  # 5 seconds connection timeout
-        heartbeatFrequencyMS=10000,  # 10 seconds heartbeat frequency
+        heartbeatFrequencyMS=60000,  # 60 seconds heartbeat frequency (reduced noise)
         retryWrites=True,
         retryReads=True,
     )

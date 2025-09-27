@@ -134,12 +134,12 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     // Stop any existing polling
     get().stopPolling();
     
-    // Start new polling
+    // Reduced polling - WebSocket should handle real-time updates
     pollingInterval = setInterval(() => {
       get().fetchIngestionStatus();
       get().fetchDataSummary();
       get().fetchTrustStats();
-    }, 10000); // Poll every 10 seconds instead of 5
+    }, 60000); // Poll every 60 seconds as fallback only
   },
 
   stopPolling: () => {
