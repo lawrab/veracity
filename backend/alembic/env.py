@@ -1,25 +1,22 @@
-import os
 import sys
 from logging.config import fileConfig
+from pathlib import Path
 
 from alembic import context
+from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 # Add the parent directory to the path to import our models
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+current_file = Path(__file__).resolve()
+sys.path.append(str(current_file.parent.parent))
 
 # Load environment variables from .env file
-from dotenv import load_dotenv
+env_path = current_file.parent.parent.parent / ".env"
+load_dotenv(env_path)
 
-load_dotenv(
-    os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-        ".env",
-    )
-)
-
-from app.core.config import settings
-from app.models.sql_models import Base
+# Now we can import after path manipulation and environment setup
+from app.core.config import settings  # noqa: E402
+from app.models.sql_models import Base  # noqa: E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
