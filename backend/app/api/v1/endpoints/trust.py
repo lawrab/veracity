@@ -374,18 +374,18 @@ class TrustScoreStatistics(BaseModel):
     """Trust score statistics response."""
 
     average_score: float = Field(..., description="Average trust score percentage")
-    total_stories: int = Field(..., description="Total number of stories with trust scores")
-    high_trust_count: int = Field(..., description="Number of stories with trust score >= 80%")
-    medium_trust_count: int = Field(..., description="Number of stories with trust score 50-80%")
-    low_trust_count: int = Field(..., description="Number of stories with trust score < 50%")
-    score_trend: float = Field(..., description="Score change percentage (positive/negative)")
+    total_stories: int = Field(..., description="Total stories with trust scores")
+    high_trust_count: int = Field(..., description="Stories with trust score >= 80%")
+    medium_trust_count: int = Field(..., description="Stories with trust score 50-80%")
+    low_trust_count: int = Field(..., description="Stories with trust score < 50%")
+    score_trend: float = Field(..., description="Score change percentage")
 
 
 @router.get("/statistics", response_model=TrustScoreStatistics)
 async def get_trust_score_statistics(db: AsyncSession = Depends(get_postgres_session)):
     """
     Get trust score statistics across all stories.
-    
+
     Returns average trust score, distribution, and trend information
     for dashboard display and analytics.
     """
@@ -410,7 +410,9 @@ async def get_trust_score_statistics(db: AsyncSession = Depends(get_postgres_ses
             )
 
         # Calculate statistics
-        trust_scores = [story.trust_score for story in stories if story.trust_score is not None]
+        trust_scores = [
+            story.trust_score for story in stories if story.trust_score is not None
+        ]
 
         if not trust_scores:
             return TrustScoreStatistics(
@@ -434,7 +436,9 @@ async def get_trust_score_statistics(db: AsyncSession = Depends(get_postgres_ses
         if mid_point > 0:
             recent_avg = sum(trust_scores[:mid_point]) / mid_point
             older_avg = sum(trust_scores[mid_point:]) / (len(trust_scores) - mid_point)
-            score_trend = ((recent_avg - older_avg) / older_avg) * 100 if older_avg > 0 else 0.0
+            score_trend = (
+                ((recent_avg - older_avg) / older_avg) * 100 if older_avg > 0 else 0.0
+            )
         else:
             score_trend = 0.0
 

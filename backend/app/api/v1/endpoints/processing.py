@@ -4,10 +4,13 @@ Processing API endpoints for converting raw posts to stories.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_mongodb_db, get_postgres_session
 from app.core.logging import get_logger
@@ -51,14 +54,19 @@ async def process_posts_to_stories(
                 for post in posts:
                     try:
                         # Create a story from the post
+                        title = post.get("title", post.get("content", "Untitled"))[:200]
+                        score = post.get("score", 0)
+                        comments = post.get("num_comments", 1)
+                        velocity = score / max(1, comments)
                         story_data = StoryCreate(
-                            title=post.get("title", post.get("content", "Untitled"))[:200],
+                            title=title,
                             description=post.get("content", ""),
                             category=post.get("subreddit", "general"),
                             trust_score=50.0,  # Default neutral score
-                            velocity=post.get("score", 0) / max(1, post.get("num_comments", 1)),
+                            velocity=velocity,
                             first_seen_at=datetime.fromtimestamp(
-                                post.get("created_utc", datetime.utcnow().timestamp())
+                                post.get("created_utc", datetime.utcnow().timestamp()),
+                                tz=timezone.utc,
                             ),
                         )
 
@@ -66,10 +74,12 @@ async def process_posts_to_stories(
                         stories_created += 1
 
                     except Exception as e:
-                        logger.exception("Failed to create story from post %s: %s", post.get("id"), e)
+                        logger.exception(
+                            "Failed to create story from post %s: %s", post.get("id"), e
+                        )
                         continue
 
-                logger.info(f"Successfully created {stories_created} stories from posts")
+                logger.info("Successfully created %d stories", stories_created)
 
             except Exception as e:
                 logger.exception(f"Post processing failed: {e}")

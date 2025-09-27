@@ -46,7 +46,9 @@ async def ingest_reddit(request: IngestionRequest, background_tasks: BackgroundT
     if ingestion_status["reddit"] == CollectorStatus.RUNNING:
         raise HTTPException(
             status_code=409,
-            detail="Reddit ingestion is already running. Please wait for it to complete.",
+            detail=(
+                "Reddit ingestion is already running. Please wait for it to complete."
+            ),
         )
 
     try:
@@ -103,7 +105,9 @@ async def test_ingestion(background_tasks: BackgroundTasks):
     if ingestion_status["reddit"] == CollectorStatus.RUNNING:
         raise HTTPException(
             status_code=409,
-            detail="Reddit ingestion is already running. Please wait for it to complete.",
+            detail=(
+                "Reddit ingestion is already running. Please wait for it to complete."
+            ),
         )
 
     try:
