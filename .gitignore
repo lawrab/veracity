@@ -32,6 +32,7 @@ yarn-error.log*
 .next/
 out/
 build/
+tsconfig.tsbuildinfo
 
 # Environment variables
 .env
@@ -71,6 +72,11 @@ config/secrets.json
 
 # Development tools
 .serena/
+.claude/
+
+# Celery
+celerybeat-schedule*
+celery.pid
 
 # Database folders (from containers)
 *postgres_data/
