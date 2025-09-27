@@ -49,24 +49,34 @@ async def websocket_endpoint(
         user_id = f"user_{token[:8]}"  # Placeholder
 
     # Connect to WebSocket
-    connected = await websocket_manager.connect(
-        websocket=websocket, channel=channel, user_id=user_id, auth_token=token
-    )
-
-    if not connected:
-        return
-
     try:
+        connected = await websocket_manager.connect(
+            websocket=websocket, channel=channel, user_id=user_id, auth_token=token
+        )
+
+        if not connected:
+            logger.warning(f"Failed to connect WebSocket to channel {channel}")
+            return
+
+        # Only proceed if connection was successful
         while True:
             # Handle incoming messages
-            message = await websocket.receive_text()
-            await websocket_manager.handle_message(websocket, message)
+            try:
+                message = await websocket.receive_text()
+                await websocket_manager.handle_message(websocket, message)
+            except WebSocketDisconnect:
+                logger.info(f"Client disconnected from {channel}")
+                break
+            except Exception as e:
+                logger.exception(f"Error handling WebSocket message: {e}")
+                break
 
     except WebSocketDisconnect:
-        await websocket_manager.disconnect(websocket)
-        logger.info(f"Client disconnected from {channel}")
+        logger.info(f"Client disconnected during connection to {channel}")
     except Exception as e:
-        logger.exception(f"WebSocket error: {e}")
+        logger.exception(f"WebSocket connection error: {e}")
+    finally:
+        # Ensure cleanup happens
         await websocket_manager.disconnect(websocket)
 
 

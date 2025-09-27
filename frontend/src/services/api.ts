@@ -5,6 +5,15 @@ import {
   CollectedDataSummary 
 } from '@/types/ingestion';
 
+export interface TrustScoreStatistics {
+  average_score: number;
+  total_stories: number;
+  high_trust_count: number;
+  medium_trust_count: number;
+  low_trust_count: number;
+  score_trend: number;
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 class ApiService {
@@ -67,6 +76,15 @@ class ApiService {
       `${this.baseUrl}/api/v1/ingestion/data-summary`
     );
     if (!response.ok) throw new Error('Failed to fetch data summary');
+    return response.json();
+  }
+
+  // Trust scoring endpoints
+  async getTrustScoreStatistics(): Promise<TrustScoreStatistics> {
+    const response = await this.fetchWithTimeout(
+      `${this.baseUrl}/api/v1/trust/statistics`
+    );
+    if (!response.ok) throw new Error('Failed to fetch trust score statistics');
     return response.json();
   }
 

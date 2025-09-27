@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import StoryList from '@/components/stories/StoryList';
 import TrendFeed from '@/components/trends/TrendFeed';
 import ConnectionStatus from '@/components/ConnectionStatus';
+import { useDashboardStore } from '@/store/dashboardStore';
 import { 
   ChartBarIcon,
   NewspaperIcon,
@@ -12,6 +13,28 @@ import {
 } from '@heroicons/react/24/outline';
 
 export default function DashboardPage() {
+  const { 
+    dataSummary, 
+    trustStats, 
+    loadingTrustStats,
+    fetchDataSummary, 
+    fetchTrustStats,
+    startPolling, 
+    stopPolling 
+  } = useDashboardStore();
+
+  useEffect(() => {
+    fetchDataSummary();
+    fetchTrustStats();
+    startPolling();
+    return () => stopPolling();
+  }, []);
+
+  // Calculate dynamic statistics from real data
+  const totalDataPoints = dataSummary.reduce((sum, item) => sum + item.count, 0);
+  const activePlatforms = dataSummary.filter(s => s.count > 0).length;
+  const totalTopics = [...new Set(dataSummary.flatMap(s => s.topics))].length;
+
   return (
     <div className="space-y-6">
         <ConnectionStatus />
@@ -25,35 +48,39 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Stats Overview */}
+        {/* Stats Overview - Now with real data */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            title="Active Stories"
-            value="247"
-            change="+12%"
-            icon={NewspaperIcon}
+            title="Total Data Points"
+            value={totalDataPoints.toLocaleString()}
+            change={totalDataPoints > 0 ? "+100%" : "0%"}
+            icon={ChartBarIcon}
             color="blue"
+            loading={!dataSummary.length}
+          />
+          <StatCard
+            title="Active Platforms"
+            value={activePlatforms.toString()}
+            change={activePlatforms > 0 ? `+${activePlatforms}` : "0"}
+            icon={NewspaperIcon}
+            color="green"
+            loading={!dataSummary.length}
           />
           <StatCard
             title="Trending Topics"
-            value="42"
-            change="+5"
+            value={totalTopics.toString()}
+            change={totalTopics > 0 ? `+${Math.min(totalTopics, 99)}` : "0"}
             icon={ArrowTrendingUpIcon}
-            color="green"
+            color="purple"
+            loading={!dataSummary.length}
           />
           <StatCard
             title="Avg Trust Score"
-            value="72.3%"
-            change="+2.1%"
+            value={trustStats ? `${trustStats.average_score}%` : "0%"}
+            change={trustStats ? `${trustStats.score_trend >= 0 ? '+' : ''}${trustStats.score_trend.toFixed(1)}%` : "0%"}
             icon={ShieldCheckIcon}
             color="indigo"
-          />
-          <StatCard
-            title="Data Points/hr"
-            value="1.2M"
-            change="+18%"
-            icon={ChartBarIcon}
-            color="purple"
+            loading={loadingTrustStats}
           />
         </div>
 
@@ -89,9 +116,10 @@ interface StatCardProps {
   change: string;
   icon: React.ComponentType<{ className?: string }>;
   color: 'blue' | 'green' | 'indigo' | 'purple';
+  loading?: boolean;
 }
 
-function StatCard({ title, value, change, icon: Icon, color }: StatCardProps) {
+function StatCard({ title, value, change, icon: Icon, color, loading = false }: StatCardProps) {
   const colorClasses = {
     blue: 'bg-blue-500',
     green: 'bg-green-500',
@@ -100,6 +128,25 @@ function StatCard({ title, value, change, icon: Icon, color }: StatCardProps) {
   };
 
   const isPositive = change.startsWith('+');
+
+  if (loading) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div className="flex items-center">
+          <div className="bg-gray-300 dark:bg-gray-600 p-3 rounded-lg animate-pulse">
+            <div className="h-6 w-6 bg-gray-400 dark:bg-gray-500 rounded"></div>
+          </div>
+          <div className="ml-4 flex-1">
+            <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-20 mb-2 animate-pulse"></div>
+            <div className="flex items-baseline">
+              <div className="h-8 bg-gray-300 dark:bg-gray-600 rounded w-16 animate-pulse"></div>
+              <div className="ml-2 h-4 bg-gray-300 dark:bg-gray-600 rounded w-12 animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
