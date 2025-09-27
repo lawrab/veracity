@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Script to stop Celery worker and beat scheduler
 
 # Colors for output

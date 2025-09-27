@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Script to start Celery worker and beat scheduler
 
 # Colors for output

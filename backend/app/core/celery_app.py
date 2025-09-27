@@ -12,8 +12,8 @@ celery_app = Celery(
     "veracity",
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
-    include=["app.tasks.pipeline", "app.tasks.scheduled"],
 )
+
 
 # Configure Celery
 celery_app.conf.update(
@@ -34,25 +34,25 @@ celery_app.conf.update(
 celery_app.conf.beat_schedule = {
     # Ingest Reddit data every 15 minutes
     "ingest-reddit-periodic": {
-        "task": "app.tasks.scheduled.scheduled_reddit_ingestion",
+        "task": "scheduled.reddit_ingestion",
         "schedule": crontab(minute="*/15"),
         "args": (),
     },
     # Process posts to stories every 10 minutes
     "process-posts-periodic": {
-        "task": "app.tasks.scheduled.scheduled_post_processing",
+        "task": "scheduled.post_processing",
         "schedule": crontab(minute="*/10"),
         "args": (),
     },
     # Update trust scores every 5 minutes
     "update-trust-scores": {
-        "task": "app.tasks.scheduled.scheduled_trust_scoring",
+        "task": "scheduled.trust_scoring",
         "schedule": crontab(minute="*/5"),
         "args": (),
     },
     # Cleanup old data daily at 3 AM
     "cleanup-old-data": {
-        "task": "app.tasks.scheduled.cleanup_old_data",
+        "task": "scheduled.cleanup_old_data",
         "schedule": crontab(hour=3, minute=0),
         "args": (),
     },
@@ -60,9 +60,9 @@ celery_app.conf.beat_schedule = {
 
 # Task routing for different queues
 celery_app.conf.task_routes = {
-    "app.tasks.pipeline.*": {"queue": "pipeline"},
-    "app.tasks.scheduled.*": {"queue": "scheduled"},
-    "app.tasks.analysis.*": {"queue": "analysis"},
+    "pipeline.*": {"queue": "pipeline"},
+    "scheduled.*": {"queue": "scheduled"},
+    "analysis.*": {"queue": "analysis"},
 }
 
 # Retry configuration
@@ -72,8 +72,14 @@ celery_app.conf.task_annotations = {
         "max_retries": 3,
         "default_retry_delay": 60,  # 1 minute
     },
-    "app.tasks.pipeline.ingest_social_media": {
+    "pipeline.ingest_reddit": {
         "rate_limit": "1/m",  # Respect API rate limits
         "max_retries": 5,
     },
 }
+
+# Import task modules to register them (after configuration)
+from app.tasks import (
+    pipeline,  # noqa: F401
+    scheduled,  # noqa: F401
+)

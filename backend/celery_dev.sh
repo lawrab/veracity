@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Development script to run Celery worker and beat in foreground for debugging
 
 # Colors for output
@@ -46,7 +46,7 @@ trap cleanup INT
 
 # Start Celery worker in background
 echo -e "${BLUE}Starting Celery worker...${NC}"
-celery -A app.core.celery_app worker \
+python -m celery -A app.core.celery_app worker \
     --loglevel=info \
     --concurrency=2 \
     --queues=pipeline,scheduled,analysis \
@@ -58,7 +58,7 @@ sleep 2
 
 # Start Celery Beat in background
 echo -e "${BLUE}Starting Celery Beat scheduler...${NC}"
-celery -A app.core.celery_app beat \
+python -m celery -A app.core.celery_app beat \
     --loglevel=info &
 BEAT_PID=$!
 

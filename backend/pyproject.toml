@@ -51,7 +51,7 @@ dependencies = [
     "httpx>=0.25.0",
     
     # Social Media APIs
-    "praw>=7.7.0",  # Reddit API
+    "asyncpraw>=7.7.0",  # Reddit API (Async)
     "tweepy>=4.14.0",  # Twitter API
     
     # Authentication & Security

@@ -19,8 +19,8 @@ from app.core.database import get_mongodb_db
 from app.models.sql_models import Story
 from app.schemas.story import StoryCreate, StoryResponse
 from app.services.ingestion.reddit_collector import RedditCollector
-from app.services.story_service import StoryService
 from app.services.scoring.trust_scorer import TrustScorer
+from app.services.story_service import StoryService
 from app.services.websocket_manager import websocket_manager
 
 logger = get_task_logger(__name__)
@@ -63,11 +63,14 @@ def ingest_reddit_data(self, subreddits: list[str] | None = None, limit: int = 1
 
 async def _async_ingest_reddit(subreddits: list[str] | None, limit: int) -> dict:
     """Async helper for Reddit ingestion."""
+    # Initialize database connections for Celery context
+    from app.core.database import init_databases
+    await init_databases()
+
     default_subreddits = ["worldnews", "technology", "science", "politics", "health"]
     subreddits = subreddits or default_subreddits
 
     collector = RedditCollector()
-    collector.db = get_mongodb_db()
     await collector.initialize()
 
     all_posts = await collector.collect_trending_posts(
@@ -116,6 +119,10 @@ def process_posts_to_stories(self, limit: int = 50) -> dict:
 
 async def _async_process_posts(limit: int) -> dict:
     """Async helper for post processing."""
+    # Initialize database connections for Celery context
+    from app.core.database import init_databases
+    await init_databases()
+
     mongo_db = get_mongodb_db()
     collection = mongo_db.social_media_posts
 
@@ -219,6 +226,10 @@ def score_stories_trust(self, story_ids: list[str] | None = None) -> dict:
 
 async def _async_score_trust(story_ids: list[str] | None) -> dict:
     """Async helper for trust scoring."""
+    # Initialize database connections for Celery context
+    from app.core.database import init_databases
+    await init_databases()
+
     async with AsyncSessionLocal() as db:
         # Get stories to score
         query = select(Story)
@@ -336,6 +347,10 @@ def analyze_url(url: str, user_id: str | None = None) -> dict:
 
 async def _async_analyze_url(url: str, user_id: str | None) -> dict:  # noqa: ARG001
     """Async helper for URL analysis."""
+    # Initialize database connections for Celery context
+    from app.core.database import init_databases
+    await init_databases()
+
     # This would integrate with news article parsing and fact-checking
     # For now, return a placeholder
     return {
